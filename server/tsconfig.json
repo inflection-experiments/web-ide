@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "ESNext",
+    "module": "NodeNext",
     "target": "ES2020",
     "types": ["node"],
     "lib": ["ES2020"],
@@ -15,7 +15,7 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     
     // REQUIRED FOR TYPEORM DECORATORS
     "experimentalDecorators": true,

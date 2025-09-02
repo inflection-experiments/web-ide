@@ -132,7 +132,7 @@
 <div class="h-full w-full relative">
   <button 
     on:click={clearTerminal}
-    class="absolute top-2 right-2 z-10 bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded font-medium cursor-pointer"
+    class="absolute top-2 right-2 z-10 bg-stone-600 hover:bg-stone-700 text-green-500 text-xs px-2 py-1 rounded font-medium cursor-pointer"
     title="Clear Terminal"
   >
     🗑️ Clear

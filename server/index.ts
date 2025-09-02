@@ -159,6 +159,7 @@ app.get('/api/test', (req, res) => {
       'GET /api/test',
       'POST /api/auth/register',
       'POST /api/auth/login',
+      'GET /api/auth/me',
       'GET /api/projects',
       'POST /api/projects',
       'GET /health'
@@ -205,6 +206,50 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(400).json({ 
       error: error instanceof Error ? error.message : 'Login failed' 
     });
+  }
+});
+
+// ✅ FIXED: GET /api/auth/me endpoint with complete error handling and null checks
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    console.log('👤 [Auth] === GET CURRENT USER START ===');
+    console.log('👤 [Auth] Headers received:', req.headers.authorization ? 'Authorization header present' : 'No authorization header');
+    
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      console.log('❌ [Auth] No token provided in request');
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    console.log('🔍 [Auth] Token found, length:', token.length);
+    console.log('🔍 [Auth] Token preview:', token.substring(0, 20) + '...');
+    
+    console.log('🔓 [Auth] Verifying token with AuthService...');
+    const decoded = authService.verifyToken(token);
+    console.log('✅ [Auth] Token decoded successfully, userId:', decoded.userId);
+    
+    // Get user from database using the decoded userId
+    console.log('📋 [Auth] Fetching user from database...');
+    const user = await authService.getUserById(decoded.userId);
+    
+    // ✅ FIXED: Add null check for user
+    if (!user) {
+      console.log('❌ [Auth] User not found in database for ID:', decoded.userId);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log(`✅ [Auth] Current user retrieved: ${user.username} (${user.email})`);
+    
+    res.json(user);
+    console.log('👤 [Auth] === GET CURRENT USER SUCCESS ===');
+  } catch (error) {
+    console.error('❌ [Auth] Get current user failed:', error);
+    console.error('❌ [Auth] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    });
+    res.status(401).json({ error: 'Invalid token' });
+    console.log('👤 [Auth] === GET CURRENT USER FAILED ===');
   }
 });
 
@@ -705,6 +750,7 @@ containerService.initialize().then(async () => {
     console.log('🧪 [Test] API test at http://localhost:9000/api/test');
     console.log('📝 [Auth] Register at POST http://localhost:9000/api/auth/register');
     console.log('🔑 [Auth] Login at POST http://localhost:9000/api/auth/login');
+    console.log('👤 [Auth] Get current user at GET http://localhost:9000/api/auth/me');
   });
 }).catch((error) => {
   console.error('Failed to initialize container service:', error);
