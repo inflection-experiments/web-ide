@@ -17,6 +17,12 @@ export class DockerManager {
     return this.userShells.get(userId);
   }
 
+  // Helper function to sanitize userId for Docker container names
+  private sanitizeUserId(userId: string): string {
+    // Remove all non-alphanumeric characters and limit length
+    return userId.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+  }
+
   // COMPLETE FIX: Extension fixing with all programming languages
   private fixIncompleteExtension(filePath: string): string {
     console.log(`🔧 [DEBUG] Checking extension for: "${filePath}"`);
@@ -139,16 +145,27 @@ export class DockerManager {
     });
   }
 
+  // ✅ CRITICAL FIX: Fixed container creation with proper name sanitization
   async createUserContainer(userId: string): Promise<Docker.Container> {
-    console.log(`🐳 [DEBUG] Creating container for user: ${userId}`);
+    console.log(`🐳 [DEBUG] Creating container for REAL user: ${userId}`);
     
-    const hostPath: string = path.resolve(process.cwd(), 'user');
-    console.log(`🐳 [DEBUG] Host path: ${hostPath}`);
+    // ✅ FIX: Sanitize userId for Docker container name (Docker has strict naming rules)
+    const sanitizedUserId = this.sanitizeUserId(userId);
+    const containerName = `user-${sanitizedUserId}`;
+    
+    console.log(`🐳 [DEBUG] Sanitized container name: ${containerName}`);
+    console.log(`🐳 [DEBUG] Original user ID: ${userId}`);
+    
+    // ✅ CRITICAL FIX: Use database user ID for persistent directory (keep full userId for directory)
+    const hostPath: string = path.resolve(process.cwd(), 'users', `db_user_${userId}`);
+    console.log(`🐳 [DEBUG] REAL user-specific host path: ${hostPath}`);
     
     try {
       await fs.stat(hostPath);
+      console.log(`📁 [DEBUG] User directory exists: ${hostPath}`);
     } catch (error) {
       await fs.mkdir(hostPath, { recursive: true });
+      console.log(`📁 [DEBUG] Created user directory: ${hostPath}`);
     }
     
     try {
@@ -157,9 +174,26 @@ export class DockerManager {
       console.warn('⚠️ [WARNING] Could not set permissions:', error);
     }
     
+    // ✅ CRITICAL FIX: Remove existing container with same name if exists
+    try {
+      const existingContainer = this.docker.getContainer(containerName);
+      try {
+        await existingContainer.stop();
+        console.log(`⏹️ [DEBUG] Stopped existing container: ${containerName}`);
+      } catch (stopError) {
+        console.log(`⏹️ [DEBUG] Container was not running: ${containerName}`);
+      }
+      await existingContainer.remove({ force: true });
+      console.log(`🗑️ [DEBUG] Removed existing container: ${containerName}`);
+    } catch (error) {
+      console.log(`🗑️ [DEBUG] No existing container to remove: ${containerName}`);
+    }
+    
+    console.log(`🚀 [DEBUG] Creating new container: ${containerName}`);
+    
     const container: Docker.Container = await this.docker.createContainer({
       Image: 'user-env:latest',
-      name: `user-${userId}`,
+      name: containerName, // ✅ Use sanitized name
       Cmd: ['/bin/bash'],
       Tty: true,
       OpenStdin: true,
@@ -170,20 +204,23 @@ export class DockerManager {
         'LC_ALL=C.UTF-8',
         'TERM=xterm-256color'
       ],
-       ExposedPorts: {
-    '3000/tcp': {} },
+      ExposedPorts: {
+        '3000/tcp': {}
+      },
       HostConfig: {
         Memory: 536870912,
         CpuShares: 512,
         AutoRemove: true,
-        Binds: [`${hostPath}:/workspace:rw`]
+        Binds: [`${hostPath}:/workspace:rw`] // ✅ Keep full userId for directory path
       }
     });
 
+    console.log(`🚀 [DEBUG] Starting container: ${containerName}`);
     await container.start();
-    this.userContainers.set(userId, container);
-    console.log(`✅ [DEBUG] Container started: ${userId}`);
+    this.userContainers.set(userId, container); // ✅ Keep original userId as key
+    console.log(`✅ [DEBUG] Container started for REAL user: ${userId} with name: ${containerName}`);
 
+    // Fix permissions inside container
     try {
       const exec = await container.exec({
         Cmd: ['chmod', '-R', '755', '/workspace'],
@@ -192,8 +229,9 @@ export class DockerManager {
         Tty: false
       });
       await exec.start({ hijack: true, stdin: false, Tty: false });
+      console.log(`✅ [DEBUG] Permissions fixed inside container: ${containerName}`);
     } catch (error) {
-      console.warn('⚠️ [WARNING] Permission fix failed:', error);
+      console.warn(`⚠️ [WARNING] Permission fix failed for container ${containerName}:`, error);
     }
 
     await this.createPersistentShell(userId);
@@ -201,10 +239,13 @@ export class DockerManager {
   }
 
   async createPersistentShell(userId: string): Promise<void> {
-    console.log(`🐚 [DEBUG] Creating shell for user: ${userId}`);
+    console.log(`🐚 [DEBUG] Creating shell for REAL user: ${userId}`);
     
     const container: Docker.Container | undefined = this.userContainers.get(userId);
-    if (!container) return;
+    if (!container) {
+      console.error(`❌ [ERROR] No container found for user: ${userId}`);
+      return;
+    }
 
     try {
       const exec = await container.exec({
@@ -222,7 +263,7 @@ export class DockerManager {
       });
 
       this.userShells.set(userId, stream);
-      console.log(`✅ [DEBUG] Shell created: ${userId}`);
+      console.log(`✅ [DEBUG] Shell created for REAL user: ${userId}`);
 
       setTimeout(() => {
         stream.write('\ncd /workspace\n');
@@ -231,7 +272,7 @@ export class DockerManager {
       }, 100);
 
     } catch (err) {
-      console.error(`❌ [ERROR] Shell creation failed for ${userId}:`, err);
+      console.error(`❌ [ERROR] Shell creation failed for REAL user ${userId}:`, err);
     }
   }
 
@@ -241,13 +282,13 @@ export class DockerManager {
 
   async writeFileToContainer(userId: string, filePath: string, content: string): Promise<void> {
     console.log(`\n🔧 [DEBUG] =================== WRITE FILE START ===================`);
-    console.log(`🔧 [DEBUG] User: ${userId}`);
+    console.log(`🔧 [DEBUG] REAL User: ${userId}`);
     console.log(`🔧 [DEBUG] File: ${filePath}`);
     console.log(`🔧 [DEBUG] Content Length: ${content.length}`);
     
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     if (!container) {
-      console.error(`❌ [ERROR] Container not found: ${userId}`);
+      console.error(`❌ [ERROR] Container not found for REAL user: ${userId}`);
       throw new Error('Container not found');
     }
 
@@ -282,9 +323,9 @@ export class DockerManager {
     pack.finalize();
 
     try {
-      console.log(`🚀 [DEBUG] Uploading to container...`);
+      console.log(`🚀 [DEBUG] Uploading to container for REAL user ${userId}...`);
       await container.putArchive(pack, { path: '/workspace' });
-      console.log(`✅ [DEBUG] Upload successful`);
+      console.log(`✅ [DEBUG] Upload successful for REAL user ${userId}`);
       
       // Sync filesystem
       try {
@@ -294,13 +335,13 @@ export class DockerManager {
           AttachStderr: false
         });
         await syncExec.start({ hijack: false });
-        console.log(`✅ [DEBUG] Sync completed`);
+        console.log(`✅ [DEBUG] Sync completed for REAL user ${userId}`);
       } catch (syncErr) {
         console.warn('⚠️ [WARNING] Sync failed:', syncErr);
       }
       
     } catch (archiveError: unknown) {
-      console.error(`❌ [ERROR] Upload failed:`, archiveError);
+      console.error(`❌ [ERROR] Upload failed for REAL user ${userId}:`, archiveError);
       
       if (archiveError instanceof Error) {
         console.error(`❌ [ERROR] Details: ${archiveError.message}`);
@@ -313,7 +354,7 @@ export class DockerManager {
   }
 
   async cleanupDuplicateFiles(userId: string): Promise<void> {
-    console.log(`🧹 [DEBUG] Cleaning duplicates for user: ${userId}`);
+    console.log(`🧹 [DEBUG] Cleaning duplicates for REAL user: ${userId}`);
     
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     if (!container) return;
@@ -342,15 +383,15 @@ export class DockerManager {
         }
       }
       
-      console.log(`✅ [DEBUG] Cleanup completed: ${userId}`);
+      console.log(`✅ [DEBUG] Cleanup completed for REAL user: ${userId}`);
     } catch (err) {
-      console.error(`❌ [ERROR] Cleanup failed: ${userId}`, err);
+      console.error(`❌ [ERROR] Cleanup failed for REAL user ${userId}:`, err);
     }
   }
 
   async readFileFromContainer(userId: string, filePath: string): Promise<string> {
     console.log(`\n📖 [DEBUG] =================== READ FILE START ===================`);
-    console.log(`📖 [DEBUG] User: ${userId}, Path: ${filePath}`);
+    console.log(`📖 [DEBUG] REAL User: ${userId}, Path: ${filePath}`);
     
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     if (!container) throw new Error('Container not found');
@@ -398,12 +439,12 @@ export class DockerManager {
             let cleanedOutput = output.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
             cleanedOutput = this.ultraCleanContent(cleanedOutput, filePath);
             
-            console.log(`📖 [DEBUG] Read successful - Length: ${cleanedOutput.length}`);
+            console.log(`📖 [DEBUG] Read successful for REAL user ${userId} - Length: ${cleanedOutput.length}`);
             console.log(`📖 [DEBUG] =================== READ FILE SUCCESS ===================\n`);
             
             resolve(cleanedOutput);
           } else {
-            console.error(`❌ [ERROR] Read failed: ${error}`);
+            console.error(`❌ [ERROR] Read failed for REAL user ${userId}: ${error}`);
             reject(new Error(`File not found: ${cleanPath}`));
           }
         } catch (err) {
@@ -414,7 +455,7 @@ export class DockerManager {
   }
 
   async executeCommand(userId: string, command: string): Promise<Readable | null> {
-    console.log(`⚡ [DEBUG] Command: ${userId} -> ${command}`);
+    console.log(`⚡ [DEBUG] Command for REAL user ${userId}: ${command}`);
     const shell = this.userShells.get(userId);
     if (!shell) return null;
 
@@ -434,7 +475,7 @@ export class DockerManager {
   }
 
   async listFiles(userId: string): Promise<string[]> {
-    console.log(`📁 [DEBUG] Listing files: ${userId}`);
+    console.log(`📁 [DEBUG] Listing files for REAL user: ${userId}`);
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     if (!container) return [];
 
@@ -487,7 +528,7 @@ export class DockerManager {
             }
           }
           
-          console.log(`📁 [DEBUG] Files found: ${result.length}`);
+          console.log(`📁 [DEBUG] Files found for REAL user ${userId}: ${result.length}`);
           resolve(result);
         } catch (err) {
           reject(err);
@@ -570,7 +611,7 @@ export class DockerManager {
   }
 
   async createDirectory(userId: string, path: string): Promise<void> {
-    console.log(`📁 [DEBUG] Creating directory: ${userId} -> ${path}`);
+    console.log(`📁 [DEBUG] Creating directory for REAL user ${userId}: ${path}`);
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     if (!container) throw new Error('Container not found');
 
@@ -687,7 +728,7 @@ export class DockerManager {
   }
 
   async cleanupContainer(userId: string): Promise<void> {
-    console.log(`🧹 [DEBUG] Cleaning up container: ${userId}`);
+    console.log(`🧹 [DEBUG] Cleaning up container for REAL user: ${userId}`);
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     const shell = this.userShells.get(userId);
 
@@ -706,10 +747,11 @@ export class DockerManager {
       await container.stop();
       await container.remove();
       this.userContainers.delete(userId);
+      console.log(`✅ [DEBUG] Container cleanup completed for user: ${userId}`);
     } catch (err: unknown) {
       const statusCode = (err as any)?.statusCode;
       if (statusCode !== 409) {
-        console.error(`Cleanup error for ${userId}:`, err);
+        console.error(`Cleanup error for REAL user ${userId}:`, err);
       }
       this.userContainers.delete(userId);
     }

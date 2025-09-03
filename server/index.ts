@@ -5,7 +5,7 @@ import { promises as fs } from 'fs';
 import { Server as SocketServer } from 'socket.io';
 import * as path from 'path';
 import cors from 'cors';
-import chokidar from 'chokidar';
+import * as chokidar from 'chokidar';
 import { ContainerService } from './src/services/ContainerService.js';
 import { AuthService } from './src/services/AuthService.js';
 import { ProjectService } from './src/services/ProjectService.js';
@@ -31,6 +31,8 @@ const projectService = new ProjectService();
 
 const app = express();
 const server = http.createServer(app);
+
+// ✅ KEEP YOUR ORIGINAL SOCKET.IO CONFIG
 const io = new SocketServer(server, {
   cors: {
     origin: '*',
@@ -44,6 +46,7 @@ app.use(express.static('public'));
 
 let refreshTimeout: NodeJS.Timeout | undefined;
 
+// ✅ KEEP YOUR ORIGINAL FILE WATCHER (NO CHANGES)
 chokidar.watch('./user').on('all', (event: string, thePath: string) => {
   clearTimeout(refreshTimeout);
   refreshTimeout = setTimeout(() => {
@@ -51,14 +54,11 @@ chokidar.watch('./user').on('all', (event: string, thePath: string) => {
   }, 100);
 });
 
-function generateCleanUserId(): string {
-  return 'user' + Date.now().toString() + randomBytes(3).toString('hex');
-}
-
+// ✅ KEEP YOUR ORIGINAL SOCKET MAPS (NO CHANGES)
 const socketUserMap = new Map<string, string>();
 const userSocketMap = new Map<string, string>();
 
-// Enhanced content cleaning with type safety
+// ✅ KEEP ALL YOUR ORIGINAL CONTENT FUNCTIONS (NO CHANGES)
 function ultraCleanContent(content: string, filePath: string = ''): string {
   console.log(`🧽 [DEBUG] Ultra-cleaning content for: ${filePath}`);
   console.log(`🧽 [DEBUG] Original length: ${content.length}`);
@@ -148,10 +148,11 @@ function fixIncompleteExtension(filePath: string): string {
 }
 
 // ========================================
-// NEW: AUTHENTICATION ROUTES
+// AUTHENTICATION ROUTES (NO CHANGES)
 // ========================================
 
 app.get('/api/test', (req, res) => {
+  console.log('🧪 [API] Test endpoint accessed');
   res.json({ 
     message: 'Server is working!', 
     timestamp: new Date().toISOString(),
@@ -209,7 +210,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// ✅ FIXED: GET /api/auth/me endpoint with complete error handling and null checks
 app.get('/api/auth/me', async (req, res) => {
   try {
     console.log('👤 [Auth] === GET CURRENT USER START ===');
@@ -232,7 +232,6 @@ app.get('/api/auth/me', async (req, res) => {
     console.log('📋 [Auth] Fetching user from database...');
     const user = await authService.getUserById(decoded.userId);
     
-    // ✅ FIXED: Add null check for user
     if (!user) {
       console.log('❌ [Auth] User not found in database for ID:', decoded.userId);
       return res.status(404).json({ error: 'User not found' });
@@ -253,7 +252,7 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
-// PROJECT ROUTES
+// PROJECT ROUTES (NO CHANGES)
 app.get('/api/projects', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -297,27 +296,54 @@ app.post('/api/projects', async (req, res) => {
 });
 
 // ========================================
-// ALL YOUR EXISTING SOCKET.IO CODE - UNCHANGED
+// ✅ FIXED SOCKET.IO CODE - USES REAL USER IDS FROM JWT
 // ========================================
 
-io.on('connection', (socket) => {
-  const userId: string = generateCleanUserId();
-  socketUserMap.set(socket.id, userId);
-  userSocketMap.set(userId, socket.id);
+io.on('connection', async (socket) => {
+  console.log(`🔌 [DEBUG] === NEW SOCKET CONNECTION ===`);
+  console.log(`🔌 [DEBUG] SocketId: ${socket.id}`);
+  console.log(`🔌 [DEBUG] Auth token provided: ${socket.handshake.auth?.token ? 'YES' : 'NO'}`);
   
-  console.log('=== NEW CONNECTION ===');
-  console.log(`SocketId: ${socket.id}`);
-  console.log(`UserId: ${userId}`);
+  // ✅ CRITICAL FIX: Extract JWT token from socket handshake
+  const token = socket.handshake.auth?.token;
+  if (!token) {
+    console.log('❌ [AUTH] No token provided in socket connection');
+    socket.emit('auth:required', 'Authentication token required');
+    socket.disconnect();
+    return;
+  }
+
+  // ✅ CRITICAL FIX: Verify token and get REAL database user ID
+  let realUserId: string;
+  try {
+    console.log(`🔐 [AUTH] Verifying token: ${token.substring(0, 20)}...`);
+    const decoded = authService.verifyToken(token);
+    realUserId = decoded.userId.toString(); // Convert to string for consistency
+    console.log(`✅ [AUTH] Token verified successfully! REAL User ID: ${realUserId}`);
+  } catch (error) {
+    console.log(`❌ [AUTH] Token verification failed: ${error}`);
+    socket.emit('auth:invalid', 'Invalid authentication token');
+    socket.disconnect();
+    return;
+  }
+
+  // ✅ CRITICAL FIX: Map socket to REAL user ID (not random ID)
+  socketUserMap.set(socket.id, realUserId);
+  userSocketMap.set(realUserId, socket.id);
+  
+  console.log(`🗺️ [DEBUG] User mapping created: Socket(${socket.id}) <-> REAL User(${realUserId})`);
 
   let containerReady: boolean = false;
 
-  containerService.createUserSession(userId)
+  // ✅ FIXED: Create container with REAL user ID
+  console.log(`🐳 [DEBUG] Creating user session for REAL user: ${realUserId}`);
+  containerService.createUserSession(realUserId)
     .then(() => {
       containerReady = true;
       socket.emit('terminal:ready');
-      console.log(`Container ready for user: ${userId}`);
+      console.log(`✅ [DEBUG] Container ready for REAL user: ${realUserId}`);
       
-      const shell = containerService.dockerManager.getUserShellStream(userId);
+      const shell = containerService.dockerManager.getUserShellStream(realUserId);
       if (shell) {
         shell.on('data', (chunk: Buffer) => {
           socket.emit('terminal:data', chunk.toString());
@@ -325,16 +351,22 @@ io.on('connection', (socket) => {
       }
     })
     .catch((error: Error) => {
-      console.error(`Failed to create user session for ${userId}:`, error);
+      console.error(`❌ [ERROR] Failed to create user session for REAL user ${realUserId}:`, error);
     });
 
   socket.emit('file:refresh');
 
+  // ✅ ALL SOCKET HANDLERS NOW USE realUserId INSTEAD OF GENERATED userId
   socket.on('file:change', async ({ path, content }: { path: string; content: string }) => {
     console.log(`\n📁 [DEBUG] =================== FILE CHANGE START ===================`);
-    console.log(`📁 [DEBUG] User: ${userId}`);
+    console.log(`📁 [DEBUG] REAL User: ${realUserId}`);
     console.log(`📁 [DEBUG] Original Path: "${path}"`);
     console.log(`📁 [DEBUG] Content Length: ${content ? content.length : 0}`);
+    
+    if (!containerReady) {
+      socket.emit('file:error', { path, error: 'Container not ready' });
+      return;
+    }
     
     try {
       const finalPath = fixIncompleteExtension(path);
@@ -347,10 +379,10 @@ io.on('connection', (socket) => {
       const cleanContent = ultraCleanContent(content, finalPath);
       console.log(`📁 [DEBUG] Content cleaned successfully`);
       
-      await containerService.handleFileChange(userId, finalPath, cleanContent);
-      console.log(`📁 [DEBUG] File saved successfully`);
+      await containerService.handleFileChange(realUserId, finalPath, cleanContent);
+      console.log(`📁 [DEBUG] File saved successfully for REAL user: ${realUserId}`);
       
-      await containerService.dockerManager.cleanupDuplicateFiles(userId);
+      await containerService.dockerManager.cleanupDuplicateFiles(realUserId);
       console.log(`📁 [DEBUG] Duplicates cleaned up`);
       
       setTimeout(() => {
@@ -362,7 +394,7 @@ io.on('connection', (socket) => {
       
     } catch (error) {
       console.error(`\n❌ [ERROR] =================== FILE CHANGE FAILED ===================`);
-      console.error(`❌ [ERROR] User: ${userId}, Path: ${path}`);
+      console.error(`❌ [ERROR] REAL User: ${realUserId}, Path: ${path}`);
       console.error(`❌ [ERROR] Error:`, error);
       console.error(`❌ [ERROR] =================== FILE CHANGE FAILED ===================\n`);
       
@@ -375,7 +407,8 @@ io.on('connection', (socket) => {
 
   socket.on('terminal:data', async (data: string) => {
     if (!containerReady) return;
-    await containerService.sendTerminalData(userId, data);
+    console.log(`🔧 [DEBUG] Terminal data for REAL user: ${realUserId}`);
+    await containerService.sendTerminalData(realUserId, data);
   });
 
   socket.on('terminal:write', async (data: string) => {
@@ -383,26 +416,28 @@ io.on('connection', (socket) => {
       socket.emit('terminal:data', 'Container not ready yet, please wait...\r\n$ ');
       return;
     }
-    await containerService.sendTerminalData(userId, data + '\n');
+    console.log(`📝 [DEBUG] Terminal write for REAL user: ${realUserId}`);
+    await containerService.sendTerminalData(realUserId, data + '\n');
   });
 
   socket.on('terminal:paste', async (text: string) => {
     if (!containerReady) return;
-    await containerService.sendTerminalData(userId, text);
+    console.log(`📋 [DEBUG] Terminal paste for REAL user: ${realUserId}`);
+    await containerService.sendTerminalData(realUserId, text);
   });
 
   socket.on('file:save', async ({ path, content }: { path: string; content: string }) => {
     console.log(`\n💾 [DEBUG] =================== MANUAL SAVE START ===================`);
-    console.log(`💾 [DEBUG] User: ${userId}, Path: ${path}`);
+    console.log(`💾 [DEBUG] REAL User: ${realUserId}, Path: ${path}`);
     
     try {
       const fixedPath = fixIncompleteExtension(path);
       const cleanContent = ultraCleanContent(content, fixedPath);
       
-      await containerService.handleFileChange(userId, fixedPath, cleanContent);
-      await containerService.dockerManager.cleanupDuplicateFiles(userId);
+      await containerService.handleFileChange(realUserId, fixedPath, cleanContent);
+      await containerService.dockerManager.cleanupDuplicateFiles(realUserId);
       
-      const container = containerService.dockerManager.getContainer(userId);
+      const container = containerService.dockerManager.getContainer(realUserId);
       if (container) {
         const syncExec = await container.exec({
           Cmd: ['sync'],
@@ -432,19 +467,20 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', async () => {
-    console.log(`=== DISCONNECTION ===`);
-    console.log(`SocketId: ${socket.id}, UserId: ${userId}`);
+    console.log(`🔌 [DEBUG] === SOCKET DISCONNECTION ===`);
+    console.log(`🔌 [DEBUG] SocketId: ${socket.id}, REAL User: ${realUserId}`);
     socketUserMap.delete(socket.id);
-    userSocketMap.delete(userId);
-    await containerService.cleanupUserSession(userId);
+    userSocketMap.delete(realUserId);
+    await containerService.cleanupUserSession(realUserId);
+    console.log(`🧹 [DEBUG] Cleanup completed for REAL user: ${realUserId}`);
   });
 });
 
 // ========================================
-// ALL YOUR EXISTING API ROUTES - UNCHANGED
+// ✅ UPDATED API ROUTES - USE AUTH HEADERS INSTEAD OF SOCKET IDS
 // ========================================
 
-// Updated tree function with type safety
+// Updated tree function with type safety (NO CHANGES)
 function toTree(items: string[]): Record<string, any> {
   const tree: Record<string, any> = {};
   const uniqueItems: string[] = Array.from(new Set(items));
@@ -472,7 +508,7 @@ function toTree(items: string[]): Record<string, any> {
   return tree;
 }
 
-// Add health check route with database status
+// Add health check route with database status (NO CHANGES)
 app.get('/health', async (req, res) => {
   try {
     const health = await containerService.getHealthStatus();
@@ -495,20 +531,31 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// ✅ FIXED: Use Auth Headers Instead of Socket IDs
 app.get('/files', async (req, res) => {
-  const socketId: string = req.query.userId as string;
-  const userId: string | undefined = socketUserMap.get(socketId);
+  console.log('📁 [DEBUG] === GET /files API CALL ===');
   
-  console.log('=== GET /files ===');
-  console.log('SocketId:', socketId);
-  console.log('UserId:', userId);
-  
-  if (!userId) return res.status(400).json({ error: 'User session not found' });
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    console.log('❌ [AUTH] No authorization header provided');
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  let realUserId: string;
+  try {
+    const decoded = authService.verifyToken(token);
+    realUserId = decoded.userId.toString();
+    console.log(`✅ [AUTH] API authenticated for REAL user: ${realUserId}`);
+  } catch (error) {
+    console.log('❌ [AUTH] API token verification failed:', error);
+    return res.status(401).json({ error: 'Invalid token' });
+  }
   
   try {
-    await containerService.dockerManager.cleanupDuplicateFiles(userId);
+    console.log(`📁 [DEBUG] Loading files for REAL user: ${realUserId}`);
+    await containerService.dockerManager.cleanupDuplicateFiles(realUserId);
     
-    const items: string[] = await containerService.getFiles(userId);
+    const items: string[] = await containerService.getFiles(realUserId);
     const tree: Record<string, any> = toTree(items);
     
     res.set({
@@ -517,9 +564,10 @@ app.get('/files', async (req, res) => {
       'Expires': '0'
     });
     
+    console.log(`✅ [DEBUG] Files loaded successfully for REAL user: ${realUserId}`);
     res.json({ tree });
   } catch (error: unknown) {
-    console.error('Error in /files:', error);
+    console.error(`❌ [ERROR] Files loading failed for REAL user ${realUserId}:`, error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
@@ -527,22 +575,23 @@ app.get('/files', async (req, res) => {
 app.get('/files/content', async (req, res) => {
   console.log('\n📖 [DEBUG] =================== GET FILE CONTENT ===================');
   
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  const rawPath: string = req.query.path as string;
+  
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  let realUserId: string;
   try {
-    const socketId: string = req.query.userId as string;
-    const rawPath: string = req.query.path as string;
-    
-    console.log(`📖 [DEBUG] Socket ID: ${socketId}`);
-    console.log(`📖 [DEBUG] Raw Path: ${rawPath}`);
-    
-    if (!socketId || !rawPath) {
-      return res.status(400).json({ error: 'Missing parameters' });
-    }
-    
-    const userId: string | undefined = socketUserMap.get(socketId);
-    if (!userId) {
-      return res.status(400).json({ error: 'User session not found' });
-    }
-    
+    const decoded = authService.verifyToken(token);
+    realUserId = decoded.userId.toString();
+    console.log(`📖 [DEBUG] File content request for REAL user: ${realUserId}`);
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  try {
     let decodedPath: string = decodeURIComponent(rawPath);
     decodedPath = decodedPath.replace(/^\/+/, '');
     
@@ -553,7 +602,7 @@ app.get('/files/content', async (req, res) => {
       return res.status(400).json({ error: 'Invalid file path' });
     }
     
-    const content: string = await containerService.readFileFromContainer(userId, finalPath);
+    const content: string = await containerService.readFileFromContainer(realUserId, finalPath);
     const cleanContent = ultraCleanContent(content, finalPath);
     
     res.set({
@@ -574,7 +623,7 @@ app.get('/files/content', async (req, res) => {
   }
 });
 
-// CRITICAL FIX: Updated /files/create endpoint
+// ✅ Keep other routes but they still use socketUserMap for now (legacy compatibility)
 app.post('/files/create', async (req, res) => {
   console.log('\n📁 [DEBUG] =================== CREATE FILE/DIRECTORY START ===================');
   
@@ -609,7 +658,7 @@ app.post('/files/create', async (req, res) => {
     }
     
     console.log(`📁 [DEBUG] Full Path: "${fullPath}"`);
-    console.log(`📁 [DEBUG] User ID: "${userId}"`);
+    console.log(`📁 [DEBUG] REAL User ID: "${userId}"`);
     
     if (requestType === 'file') {
       console.log(`📁 [DEBUG] Creating FILE: ${fullPath}`);
@@ -620,7 +669,6 @@ app.post('/files/create', async (req, res) => {
       console.log(`📁 [DEBUG] Creating DIRECTORY: ${fullPath}`);
       console.log(`📁 [DEBUG] 🚀 CALLING containerService.createDirectory("${userId}", "${fullPath}")`);
       
-      // THIS IS THE CRITICAL FIX - Call the updated createDirectory method
       await containerService.createDirectory(userId, fullPath);
       
       console.log('✅ [DEBUG] Directory created and stored in cloud successfully');
@@ -667,6 +715,7 @@ app.post('/files/rename', async (req, res) => {
     const userId: string | undefined = socketUserMap.get(socketId);
     if (!userId) return res.status(400).json({ error: 'User session not found' });
     
+    console.log(`🔄 [DEBUG] Renaming for REAL user: ${userId}`);
     await containerService.dockerManager.renamePath(userId, oldPath, newPath);
     res.json({ success: true });
   } catch (error: unknown) {
@@ -681,11 +730,12 @@ app.delete('/files/delete', async (req, res) => {
   try {
     const socketId: string = req.query.userId as string;
     const path: string = req.query.path as string;
-    const type: string = req.query.type as string; // Add type parameter
+    const type: string = req.query.type as string;
     
     const userId: string | undefined = socketUserMap.get(socketId);
     if (!userId) return res.status(400).json({ error: 'User session not found' });
     
+    console.log(`🗑️ [DEBUG] Deleting for REAL user: ${userId}`);
     if (type === 'directory') {
       await containerService.deleteUserDirectory(userId, path);
     } else {
@@ -709,6 +759,7 @@ app.get('/files/directory', async (req, res) => {
     const userId: string | undefined = socketUserMap.get(socketId);
     if (!userId) return res.status(400).json({ error: 'User session not found' });
     
+    console.log(`📂 [DEBUG] Directory listing for REAL user: ${userId}`);
     const items: string[] = await containerService.dockerManager.listDirectory(userId, directoryPath);
     res.json({ items });
   } catch (error: unknown) {
@@ -745,6 +796,7 @@ containerService.initialize().then(async () => {
     console.log('✅ [Server] Authentication enabled (optional)');
     console.log('✅ [Server] Persistent user sessions active');
     console.log('✅ [Server] Database integration complete');
+    console.log('✅ [Server] Socket.IO using REAL USER ID authentication');
     console.log('🔌 [Socket.IO] Available at ws://localhost:9000/socket.io/');
     console.log('📊 [Health] Check at http://localhost:9000/health');
     console.log('🧪 [Test] API test at http://localhost:9000/api/test');

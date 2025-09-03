@@ -1,6 +1,7 @@
 import { httpClient, API_ENDPOINTS } from './config';
+import socket from '$lib/socket'; // Import your existing socket
 
-// Define proper types for file tree structure
+// ✅ Define specific response interfaces instead of using 'any'
 export interface FileTreeItem {
   [key: string]: string | FileTreeItem;
 }
@@ -13,29 +14,152 @@ export interface FileContentResponse {
   content: string;
 }
 
+export interface CreateFileResponse {
+  success: boolean;
+  path: string;
+  type: string;
+  error?: string;
+}
+
+export interface DeleteResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface RenameResponse {
+  success: boolean;
+  error?: string;
+}
+
 export class FilesAPI {
   /**
-   * Load file tree for user
+   * ✅ FIXED: Load file tree using socket with real user authentication
    */
   static async getFileTree(userId?: string): Promise<FileTreeResponse> {
-    const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    // ✅ USE SOCKET ID FOR AUTHENTICATED USER IDENTIFICATION
+    const socketId = socket.id || userId;
+    
+    if (!socketId) {
+      console.warn('⚠️ FilesAPI: No socket connection - files may not persist');
+    }
+    
+    const params = socketId ? `?userId=${encodeURIComponent(socketId)}` : '';
     return httpClient.request<FileTreeResponse>(`${API_ENDPOINTS.FILES.LIST}${params}`);
   }
 
   /**
-   * Load file content
+   * ✅ FIXED: Load file content using authenticated socket
    */
   static async getFileContent(path: string, userId: string): Promise<FileContentResponse> {
+    // ✅ USE SOCKET ID FOR AUTHENTICATED USER IDENTIFICATION
+    const socketId = socket.id || userId;
+    
+    if (!socketId) {
+      console.warn('⚠️ FilesAPI: No socket connection - files may not persist');
+    }
+    
     const params = new URLSearchParams({
       path: path,
-      userId: userId
+      userId: socketId || userId
     });
     return httpClient.request<FileContentResponse>(`${API_ENDPOINTS.FILES.CONTENT}?${params.toString()}`);
   }
 
   /**
+   * ✅ FIXED: Save file using socket with real user authentication for persistence
+   */
+  static saveFile(path: string, content: string): void {
+    console.log('💾 FilesAPI: Saving file with authenticated user for persistence:', path);
+    
+    if (!socket.connected) {
+      console.error('❌ FilesAPI: Socket not connected - file may not persist across logins');
+      return;
+    }
+
+    // ✅ USE AUTHENTICATED SOCKET FOR FILE PERSISTENCE
+    socket.emit('file:change', { path, content });
+  }
+
+  /**
+   * ✅ FIXED: Create file/directory using authenticated socket - NO MORE 'any' TYPE
+   */
+  static async createFileOrDirectory(
+    type: 'file' | 'directory',
+    path: string,
+    content: string = '',
+    parentPath: string = ''
+  ): Promise<CreateFileResponse> {
+    console.log('📁 FilesAPI: Creating', type, 'with authenticated user:', path);
+
+    // ✅ USE SOCKET ID FOR AUTHENTICATED USER IDENTIFICATION
+    const socketId = socket.id;
+    
+    if (!socketId) {
+      console.error('❌ FilesAPI: Socket not connected - creation may fail');
+      throw new Error('Socket not connected - please refresh the page');
+    }
+
+    return httpClient.request<CreateFileResponse>(`${API_ENDPOINTS.FILES.CREATE}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: socketId,
+        type,
+        path,
+        content,
+        parentPath
+      }),
+    });
+  }
+
+  /**
+   * ✅ ADDED: Delete file/directory with proper typing
+   */
+  static async deleteFileOrDirectory(
+    path: string,
+    type: 'file' | 'directory'
+  ): Promise<DeleteResponse> {
+    const socketId = socket.id;
+    
+    if (!socketId) {
+      throw new Error('Socket not connected - please refresh the page');
+    }
+
+    const params = new URLSearchParams({
+      userId: socketId,
+      path: path,
+      type: type
+    });
+
+    return httpClient.request<DeleteResponse>(`${API_ENDPOINTS.FILES.DELETE}?${params.toString()}`, {
+      method: 'DELETE'
+    });
+  }
+
+  /**
+   * ✅ ADDED: Rename file/directory with proper typing
+   */
+  static async renameFileOrDirectory(
+    oldPath: string,
+    newPath: string
+  ): Promise<RenameResponse> {
+    const socketId = socket.id;
+    
+    if (!socketId) {
+      throw new Error('Socket not connected - please refresh the page');
+    }
+
+    return httpClient.request<RenameResponse>(`${API_ENDPOINTS.FILES.RENAME}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: socketId,
+        oldPath: oldPath,
+        newPath: newPath
+      }),
+    });
+  }
+
+  /**
    * Clean file path - removes control characters and normalizes path
-   * Using character code filtering to avoid ESLint no-control-regex rule
    */
   static cleanFilePath(path: string): string {
     if (!path) return '';

@@ -37,31 +37,56 @@
         return cleanPath;
     }
 
+    // ✅ CRITICAL FIX: Use Authorization header instead of userId query param
     async function loadFileTree(): Promise<void> {
         try {
-            const url = userId ? `http://localhost:9000/files?userId=${userId}` : 'http://localhost:9000/files';
-            const response = await fetch(url);
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                console.error('❌ No auth token for file tree request');
+                return;
+            }
+
+            console.log('📁 [DEBUG] Loading file tree with auth token...');
+            const response = await fetch('http://localhost:9000/files', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             const data = await response.json();
             tree = data.tree || {};
             loading = false;
+            console.log('✅ [DEBUG] File tree loaded successfully');
         } catch (error) {
             console.error('💥 Error loading file tree:', error);
             loading = false;
         }
     }
 
+    // ✅ CRITICAL FIX: Use Authorization header for file content
     async function loadFileContent(path: string): Promise<void> {
         if (!path) return;
         
         try {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                console.error('❌ No auth token for file content request');
+                return;
+            }
+
             const cleanPath = cleanFilePath(path);
-            const params = new URLSearchParams({
-                path: cleanPath,
-                userId: userId
-            });
+            const params = new URLSearchParams({ path: cleanPath });
             
-            const url = `http://localhost:9000/files/content?${params.toString()}`;
-            const response = await fetch(url);
+            console.log(`📖 [DEBUG] Loading file content with auth token: ${cleanPath}`);
+            const response = await fetch(`http://localhost:9000/files/content?${params.toString()}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -80,6 +105,7 @@
             }
             
             selectedFileContent = content;
+            console.log(`✅ [DEBUG] File content loaded successfully: ${cleanPath}`);
         } catch (error) {
             console.error('💥 Failed to load file content:', error);
             selectedFileContent = '';
@@ -153,10 +179,10 @@
         
         // Socket listeners (only run after auth is initialized)
         socket.on('connect', () => {
-            console.log('🔌✅ Socket connected!');
+            console.log('🔌✅ Socket connected with REAL user authentication!');
             userId = socket.id ?? '';
             localStorage.setItem('userId', userId);
-            loadFileTree();
+            loadFileTree(); // Now uses auth header instead of socket ID
         });
         
         socket.on('disconnect', () => {
@@ -165,19 +191,19 @@
         
         socket.on('file:refresh', (path?: string) => {
             console.log('🔄 File refresh event received');
-            loadFileTree();
+            loadFileTree(); // Now uses auth header
         });
         
         socket.on('terminal:data', (data: string) => {
             if (typeof data === 'string' && data.trim().endsWith('$')) {
                 setTimeout(() => {
-                    loadFileTree();
+                    loadFileTree(); // Now uses auth header
                 }, 300);
             }
         });
         
         const handleRefreshEvent = (): void => {
-            loadFileTree();
+            loadFileTree(); // Now uses auth header
         };
         
         window.addEventListener('refreshFileTree', handleRefreshEvent);
@@ -215,7 +241,7 @@
     <div class="h-screen flex flex-col">
         <!-- User info bar -->
         <div class="bg-zinc-900 text-green-500 text-xs p-1 flex justify-between">
-            <span>Logged in as {user?.username}</span>
+            <span>Logged in as {user?.username} (REAL USER ID: {user?.id})</span>
             <!-- ✅ FIXED: Logout button now uses handleLogout function -->
             <button 
                 on:click={handleLogout} 
@@ -229,7 +255,7 @@
             <!-- ✅ FIXED: Add event prevention to file tree container -->
             <div class="w-64 bg-gray-100 border-r border-gray-300 overflow-y-auto" on:keydown|stopPropagation on:keyup|stopPropagation on:keypress|stopPropagation>
                 <div class="p-4">
-                    <h3 class="font-semibold text-gray-800 mb-3">Files</h3>
+                    <h3 class="font-semibold text-gray-800 mb-3">Files (Persistent)</h3>
                     {#if loading}
                         <p class="text-gray-600 text-sm">Loading files...</p>
                     {:else}
