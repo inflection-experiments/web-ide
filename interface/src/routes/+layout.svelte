@@ -95,9 +95,13 @@
         loadFileContent(cleanPath);
     }
 
+    // ✅ FIXED: Prevent unwanted content saves
     function handleContentSave(path: string, content: string): void {
         const cleanPath = cleanFilePath(path);
         if (!cleanPath) return;
+        
+        // Only save if content actually changed
+        if (content === selectedFileContent) return;
         
         socket.emit("file:change", {
             path: cleanPath,
@@ -222,7 +226,8 @@
         </div>
         
         <div class="flex-1 flex overflow-hidden">
-            <div class="w-64 bg-gray-100 border-r border-gray-300 overflow-y-auto">
+            <!-- ✅ FIXED: Add event prevention to file tree container -->
+            <div class="w-64 bg-gray-100 border-r border-gray-300 overflow-y-auto" on:keydown|stopPropagation on:keyup|stopPropagation on:keypress|stopPropagation>
                 <div class="p-4">
                     <h3 class="font-semibold text-gray-800 mb-3">Files</h3>
                     {#if loading}
