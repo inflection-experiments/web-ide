@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { FolderOpen, Folder, File, ChevronRight } from 'lucide-svelte';
+
   let { tree, onSelect, currentPath = '' } = $props<{
     tree: Record<string, any>;
     onSelect: (path: string) => void;
@@ -68,17 +70,14 @@
     }
   }
 
-  // FORCE REFRESH ALL EXPANDED DIRECTORIES
   async function forceRefreshAllExpandedDirs(): Promise<void> {
     console.log('🔄 FORCE REFRESHING ALL EXPANDED DIRECTORIES');
     console.log('  - expandedDirs:', Array.from(expandedDirs));
     console.log('  - currentPath:', `"${currentPath}"`);
     
-    // Clear all directory contents cache
     directoryContents.clear();
     directoryContents = new Map(directoryContents);
     
-    // Reload all expanded directories
     for (const dirName of expandedDirs) {
       const fullPath = currentPath ? `${currentPath}/${dirName}` : dirName;
       console.log(`  🔄 Reloading expanded directory: ${dirName} (${fullPath})`);
@@ -317,11 +316,9 @@
         console.log('🎉 RENAME SUCCESS!');
         showRenameDialog = false;
         
-        // CRITICAL FIX: Force refresh all expanded directories
         console.log('🔄 FORCE REFRESHING ALL EXPANDED DIRS AFTER RENAME...');
         await forceRefreshAllExpandedDirs();
         
-        // Trigger main tree refresh
         console.log('🔄 Triggering main tree refresh after rename...');
         window.dispatchEvent(new CustomEvent('refreshFileTree'));
         
@@ -374,11 +371,9 @@
         console.log('🎉 DELETE SUCCESS!');
         showContextMenu = false;
         
-        // CRITICAL FIX: Force refresh all expanded directories
         console.log('🔄 FORCE REFRESHING ALL EXPANDED DIRS AFTER DELETE...');
         await forceRefreshAllExpandedDirs();
         
-        // Trigger main tree refresh
         console.log('🔄 Triggering main tree refresh after delete...');
         window.dispatchEvent(new CustomEvent('refreshFileTree'));
         
@@ -405,33 +400,51 @@
   });
 </script>
 
-<div class="min-h-full w-full" on:contextmenu={handleEmptySpaceContextMenu}>
+<div class="min-h-full w-full bg-transparent p-2" on:contextmenu={handleEmptySpaceContextMenu}>
   {#each Object.entries(tree) as [name, value]}
     {#if value !== null && typeof value === 'object'}
       <!-- Directory -->
-      <div class="my-1">
+      <div class="mb-0.5">
         <div 
-          class="cursor-pointer px-1 py-1.5 select-none rounded flex items-center gap-1.5 transition-colors hover:bg-gray-100 {expandedDirs.has(name) ? 'bg-blue-50' : ''}"
+          class="cursor-pointer px-2 py-1 select-none rounded-md flex items-center gap-2 transition-all duration-200 hover:bg-gray-200/70 dark:hover:bg-orange-800/30 {expandedDirs.has(name) ? 'bg-gray-300/80 dark:bg-orange-900/40' : ''} group"
           on:click={() => handleFileClick(name, true, currentPath ? `${currentPath}/${name}` : name)}
           on:contextmenu={(e) => handleContextMenu(e, name, currentPath ? `${currentPath}/${name}` : name, true)}
         >
-          <span class="text-base">
-            {#if loadingDirs.has(name)}
-              ⏳
+          <!-- Expand/Collapse Arrow -->
+          <div class="w-4 h-4 flex items-center justify-center">
+            <ChevronRight 
+              size="12"
+              class="transition-transform duration-200 text-gray-500 dark:text-gray-400 {expandedDirs.has(name) ? 'rotate-90' : ''}"
+            />
+          </div>
+          
+          <!-- Folder Icon -->
+          <div class="w-4 h-4 flex items-center justify-center">
+            {#if expandedDirs.has(name)}
+              <FolderOpen size="16" class="text-gray-800 dark:text-orange-400" />
             {:else}
-              {expandedDirs.has(name) ? '📂' : '📁'}
+              <Folder size="16" class="text-gray-800 dark:text-orange-400" />
             {/if}
-          </span>
-          <span class="text-sm font-medium text-gray-800">{name}</span>
+          </div>
+          
+          <!-- Folder Name -->
+          <span class="text-sm font-medium text-gray-900 dark:text-white flex-1 truncate">{name}</span>
+          
+          <!-- Status -->
           {#if !expandedDirs.has(name) && !loadingDirs.has(name)}
-            <span class="text-gray-500 text-xs ml-auto">(click to expand)</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              {Object.keys(directoryContents.get(name) || {}).length || '?'}
+            </span>
           {/if}
         </div>
         
         {#if expandedDirs.has(name)}
-          <div class="ml-6 border-l-2 border-gray-200 pl-3 mt-1">
+          <div class="ml-6 border-l border-gray-300 dark:border-gray-700 pl-3 mt-1 space-y-0.5">
             {#if loadingDirs.has(name)}
-              <div class="text-gray-500 italic py-2 text-sm">Loading...</div>
+              <div class="text-gray-500 dark:text-gray-400 italic py-2 text-sm flex items-center gap-2">
+                <span class="animate-spin">⟳</span>
+                Loading...
+              </div>
             {:else if directoryContents.has(name)}
               {@const dirContent = directoryContents.get(name) || {}}
               {#if Object.keys(dirContent).length > 0}
@@ -441,10 +454,16 @@
                   currentPath={currentPath ? `${currentPath}/${name}` : name}
                 />
               {:else}
-                <div class="text-gray-500 italic py-2 text-sm">(empty directory)</div>
+                <div class="text-gray-500 dark:text-gray-400 italic py-2 text-sm flex items-center gap-2">
+                  <span class="text-xs">📭</span>
+                  Empty
+                </div>
               {/if}
             {:else}
-              <div class="text-red-600 italic py-2 text-sm">Failed to load contents</div>
+              <div class="text-red-600 dark:text-red-400 italic py-2 text-sm flex items-center gap-2">
+                <span class="text-xs">⚠️</span>
+                Failed to load
+              </div>
             {/if}
           </div>
         {/if}
@@ -452,12 +471,25 @@
     {:else}
       <!-- File -->
       <div 
-        class="cursor-pointer px-1 py-1.5 select-none rounded flex items-center gap-1.5 transition-colors hover:bg-gray-100 my-1"
+        class="cursor-pointer px-2 py-1 select-none rounded-md flex items-center gap-2 transition-all duration-200 hover:bg-gray-100/70 dark:hover:bg-gray-800/30 group mb-0.5"
         on:click={() => handleFileClick(name, false, currentPath ? `${currentPath}/${name}` : name)}
         on:contextmenu={(e) => handleContextMenu(e, name, currentPath ? `${currentPath}/${name}` : name, false)}
       >
-        <span class="text-base">📄</span>
-        <span class="text-sm text-gray-600">{name}</span>
+        <!-- Spacer for alignment with folders -->
+        <div class="w-4 h-4"></div>
+        
+        <!-- File Icon -->
+        <div class="w-4 h-4 flex items-center justify-center">
+          <File size="14" class="text-gray-700 dark:text-gray-300" />
+        </div>
+        
+        <!-- File Name -->
+        <span class="text-sm text-gray-900 dark:text-gray-300 flex-1 truncate">{name}</span>
+        
+        <!-- File Type -->
+        <span class="text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+          {name.includes('.') ? name.split('.').pop()?.toUpperCase() : ''}
+        </span>
       </div>
     {/if}
   {/each}
@@ -465,24 +497,24 @@
   <!-- Context Menu -->
   {#if showContextMenu}
     <div 
-      class="fixed bg-white border border-gray-300 shadow-lg z-50 min-w-40 rounded-lg overflow-hidden"
+      class="fixed bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 shadow-xl z-50 min-w-44 rounded-lg overflow-hidden backdrop-blur-sm"
       style="position: fixed; top: {contextMenuPosition.y}px; left: {contextMenuPosition.x}px;"
     >
-      <div class="px-4 py-3 cursor-pointer border-b border-gray-100 flex items-center gap-2.5 text-sm transition-colors hover:bg-gray-50" on:click={() => createNewItem('file')}>
-        <span class="text-base">📄</span>
+      <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={() => createNewItem('file')}>
+        <File size="16" />
         <span>New File</span>
       </div>
-      <div class="px-4 py-3 cursor-pointer border-b border-gray-100 flex items-center gap-2.5 text-sm transition-colors hover:bg-gray-50" on:click={() => createNewItem('directory')}>
-        <span class="text-base">📁</span>
+      <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={() => createNewItem('directory')}>
+        <Folder size="16" />
         <span>New Folder</span>
       </div>
       
       {#if contextMenuType === 'file' || contextMenuType === 'directory'}
-        <div class="px-4 py-3 cursor-pointer border-b border-gray-100 flex items-center gap-2.5 text-sm transition-colors hover:bg-gray-50" on:click={renameItem}>
+        <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={renameItem}>
           <span class="text-base">✏️</span>
           <span>Rename</span>
         </div>
-        <div class="px-4 py-3 cursor-pointer text-red-600 flex items-center gap-2.5 text-sm transition-colors hover:bg-red-50" on:click={handleDelete}>
+        <div class="px-4 py-3 cursor-pointer text-red-600 dark:text-red-400 flex items-center gap-3 text-sm transition-colors hover:bg-red-50 dark:hover:bg-red-900/20" on:click={handleDelete}>
           <span class="text-base">🗑️</span>
           <span>Delete</span>
         </div>
@@ -492,34 +524,34 @@
 
   <!-- Create Dialog -->
   {#if showCreateDialog}
-    <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div class="bg-white rounded-xl p-8 shadow-xl min-w-96">
-        <h3 class="text-lg font-semibold text-gray-800 mb-5">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl p-8 shadow-2xl min-w-96">
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
           Create New {newItemType === 'file' ? 'File' : 'Folder'}
           {#if contextMenuType === 'directory'}
-            <br><small class="text-sm text-gray-600 font-normal">📂 Inside: {contextMenuPath || 'root'}</small>
+            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">📂 Inside: {contextMenuPath || 'root'}</small>
           {:else if contextMenuType === 'file'}
-            <br><small class="text-sm text-gray-600 font-normal">📁 In same directory as: {contextMenuPath}</small>
+            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">📁 In same directory as: {contextMenuPath}</small>
           {:else}
-            <br><small class="text-sm text-gray-600 font-normal">📁 In: {currentPath || 'root'}</small>
+            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">📁 In: {currentPath || 'root'}</small>
           {/if}
         </h3>
         <input 
           bind:value={newItemName} 
           placeholder="Enter name..." 
-          class="w-full mb-5 p-3 border-2 border-gray-200 rounded-md text-base outline-none transition-colors focus:border-blue-400"
+          class="w-full mb-6 p-4 border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-white text-black placeholder:text-gray-500 rounded-lg text-base outline-none transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50"
           on:keydown={(e) => e.key === 'Enter' && handleCreate()}
           autofocus
         />
         <div class="flex gap-3 justify-end">
           <button 
-            class="px-6 py-3 bg-gray-100 text-gray-600 rounded-md text-sm font-medium transition-colors hover:bg-gray-200"
+            class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-all hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105"
             on:click={() => showCreateDialog = false}
           >
             Cancel
           </button>
           <button 
-            class="px-6 py-3 bg-blue-500 text-white rounded-md text-sm font-medium transition-colors hover:bg-blue-600"
+            class="px-6 py-3 bg-orange-500 text-black rounded-lg text-sm font-medium transition-all hover:bg-orange-600 hover:scale-105 shadow-lg"
             on:click={handleCreate}
           >
             Create
@@ -531,28 +563,28 @@
 
   <!-- Rename Dialog -->
   {#if showRenameDialog}
-    <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div class="bg-white rounded-xl p-8 shadow-xl min-w-96">
-        <h3 class="text-lg font-semibold text-gray-800 mb-5">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl p-8 shadow-2xl min-w-96">
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
           Rename {contextMenuType === 'file' ? 'File' : 'Folder'}
-          <br><small class="text-sm text-gray-600 font-normal">Current: {oldItemName}</small>
+          <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">Current: {oldItemName}</small>
         </h3>
         <input 
           bind:value={newItemName} 
           placeholder="Enter new name..." 
-          class="w-full mb-5 p-3 border-2 border-gray-200 rounded-md text-base outline-none transition-colors focus:border-green-400"
+          class="w-full mb-6 p-4 border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-white text-black placeholder:text-gray-500 rounded-lg text-base outline-none transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50"
           on:keydown={(e) => e.key === 'Enter' && handleRename()}
           autofocus
         />
         <div class="flex gap-3 justify-end">
           <button 
-            class="px-6 py-3 bg-gray-100 text-gray-600 rounded-md text-sm font-medium transition-colors hover:bg-gray-200"
+            class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-all hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105"
             on:click={() => showRenameDialog = false}
           >
             Cancel
           </button>
           <button 
-            class="px-6 py-3 bg-green-500 text-white rounded-md text-sm font-medium transition-colors hover:bg-green-600"
+            class="px-6 py-3 bg-orange-500 text-black rounded-lg text-sm font-medium transition-all hover:bg-orange-600 hover:scale-105 shadow-lg"
             on:click={handleRename}
           >
             Rename
