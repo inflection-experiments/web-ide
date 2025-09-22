@@ -7,6 +7,7 @@ services:
     ports:
       - "9000:9000"    # Backend API and Socket.IO
       - "5173:5173"    # Frontend dev server (if needed)
+      - "6001:3000"    # User Express apps
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # ✅ ONLY FIX: REMOVED SHARED VOLUME - NO MORE ./server/user:/app/user

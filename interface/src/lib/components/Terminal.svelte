@@ -5,10 +5,12 @@
     import { Trash2 } from 'lucide-svelte';
     import '@xterm/xterm/css/xterm.css';
 
+
     let terminalRef: HTMLDivElement | null = null;
     let isRendered = false;
     let term: any = null;
     let terminalReady = false;
+
 
     const lightTheme = {
         background: '#ffffff',
@@ -35,6 +37,7 @@
         brightWhite: '#eeeeec'
     };
 
+
     const darkTheme = {
         background: '#000000',
         foreground: '#ffffff',
@@ -60,6 +63,7 @@
         brightWhite: '#ffffff'
     };
 
+
     // ✅ FIXED: Function to update terminal theme using direct assignment
     function updateTerminalTheme() {
         if (term && terminalReady) {
@@ -81,9 +85,11 @@
         }
     }
 
+
     onMount(() => {
         if (!browser || isRendered) return;
         isRendered = true;
+
 
         // ✅ Listen for global theme changes from layout
         function handleGlobalThemeChange(event: CustomEvent) {
@@ -93,12 +99,15 @@
             }, 100);
         }
 
+
         window.addEventListener('globalThemeChange', handleGlobalThemeChange as EventListener);
+
 
         Promise.all([
         import('@xterm/xterm'),
-        import('@xterm/addon-fit')
-        ]).then(([{ Terminal: XTerminal }, { FitAddon }]) => {
+        import('@xterm/addon-fit'),
+        import('@xterm/addon-web-links')
+        ]).then(([{ Terminal: XTerminal }, { FitAddon }, { WebLinksAddon }]) => {
         
         // ✅ Get initial theme state
         const isDarkMode = document.documentElement.classList.contains('dark');
@@ -114,8 +123,15 @@
             theme: isDarkMode ? darkTheme : lightTheme
         });
 
+
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
+
+       const webLinksAddon = new WebLinksAddon((event, uri) => {
+    window.open(uri, '_blank');
+});
+term.loadAddon(webLinksAddon);
+
 
         if (terminalRef) {
             term.open(terminalRef);
@@ -131,6 +147,7 @@
                 }, 100);
             }, 100);
         }
+
 
         term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
             if (event.ctrlKey || event.metaKey) {
@@ -150,9 +167,11 @@
             return true;
         });
 
+
         term.onData((data: string) => {
             socket.emit('terminal:data', data);
         });
+
 
         function onTerminalData(data: string) {
             const clearSequences = [
@@ -180,12 +199,14 @@
             }
         }
 
+
         socket.on('terminal:ready', () => {
             if (term) {
             term.clear();
             term.write('Container ready! Setting up workspace...\r\n');
             }
         });
+
 
         const resizeObserver = new ResizeObserver(() => {
             fitAddon.fit();
@@ -195,7 +216,9 @@
             resizeObserver.observe(terminalRef);
         }
 
+
         socket.on("terminal:data", onTerminalData);
+
 
         const cleanup = () => {
             resizeObserver.disconnect();
@@ -205,11 +228,13 @@
             window.removeEventListener('globalThemeChange', handleGlobalThemeChange as EventListener);
         };
 
+
         window.addEventListener('beforeunload', cleanup);
         
         return cleanup;
         });
     });
+
 
     function clearTerminal() {
         if (term) {
@@ -222,6 +247,7 @@
     }
 </script>
 
+
 <style>
     :global(.xterm .xterm-viewport::-webkit-scrollbar) {
         display: none !important;
@@ -232,6 +258,7 @@
         -ms-overflow-style: none !important;
     }
 </style>
+
 
 <div class="h-full w-full relative">
     <button 

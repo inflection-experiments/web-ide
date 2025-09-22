@@ -191,29 +191,72 @@ export class DockerManager {
     
     console.log(`🚀 [DEBUG] Creating new container: ${containerName}`);
     
-    const container: Docker.Container = await this.docker.createContainer({
-      Image: 'user-env:latest',
-      name: containerName, // ✅ Use sanitized name
-      Cmd: ['/bin/bash'],
-      Tty: true,
-      OpenStdin: true,
-      WorkingDir: '/workspace',
-      User: '0:0',
-      Env: [
-        'LANG=C.UTF-8',
-        'LC_ALL=C.UTF-8',
-        'TERM=xterm-256color'
-      ],
-      ExposedPorts: {
-        '3000/tcp': {}
-      },
-      HostConfig: {
-        Memory: 536870912,
-        CpuShares: 512,
-        AutoRemove: true,
-        Binds: [`${hostPath}:/workspace:rw`] // ✅ Keep full userId for directory path
-      }
-    });
+    // const container: Docker.Container = await this.docker.createContainer({
+    //   Image: 'user-env:latest',
+    //   name: containerName, // ✅ Use sanitized name
+    //   Cmd: ['/bin/bash'],
+    //   Tty: true,
+    //   OpenStdin: true,
+    //   WorkingDir: '/workspace',
+    //   User: '0:0',
+    //   Env: [
+    //     'LANG=C.UTF-8',
+    //     'LC_ALL=C.UTF-8',
+    //     'TERM=xterm-256color'
+    //   ],
+    //   ExposedPorts: {
+    //     '3000/tcp': {}
+    //   },
+    //   HostConfig: {
+    //     Memory: 536870912,
+    //     CpuShares: 512,
+    //     AutoRemove: true,
+    //     Binds: [`${hostPath}:/workspace:rw`] // ✅ Keep full userId for directory path
+    //   }
+    // });
+
+
+const container: Docker.Container = await this.docker.createContainer({
+  Image: 'user-env:latest',
+  name: containerName,
+  Cmd: ['/bin/bash'],
+  Tty: true,
+  OpenStdin: true,
+  WorkingDir: '/workspace',
+  User: '0:0',
+  Env: [
+    'LANG=C.UTF-8',
+    'LC_ALL=C.UTF-8',
+    'TERM=xterm-256color'
+  ],
+  ExposedPorts: {
+  '3000/tcp': {},
+  '4000/tcp': {},
+  '5000/tcp': {},
+  '6000/tcp': {},
+  '7000/tcp': {},
+  '8000/tcp': {}
+},
+ HostConfig: {
+  Memory: 536870912,
+  CpuShares: 512,
+  AutoRemove: true,
+  Binds: [`${hostPath}:/workspace:rw`],
+  PortBindings: {
+    '3000/tcp': [{ HostPort: '3000' }],
+    '4000/tcp': [{ HostPort: '4000' }],
+    '5000/tcp': [{ HostPort: '5000' }],
+    '6000/tcp': [{ HostPort: '6000' }],
+    '7000/tcp': [{ HostPort: '7000' }],
+    '8000/tcp': [{ HostPort: '8000' }]
+  }
+}
+});
+
+
+
+
+
 
     console.log(`🚀 [DEBUG] Starting container: ${containerName}`);
     await container.start();
