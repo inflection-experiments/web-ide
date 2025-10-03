@@ -57,7 +57,7 @@
       return;
     }
 
-    console.log('📝 Attempting registration...', { username, email });
+    console.log('Attempting registration...', { username, email });
     const result = await auth.register(username.trim(), email.trim(), password);
     
     if (result.success) {
@@ -96,7 +96,7 @@
     if (passwordInput) {
       passwordInput.type = showPassword ? 'text' : 'password';
     }
-    console.log('🔄 Password visibility toggled:', showPassword);
+    console.log('Password visibility toggled:', showPassword);
   }
 
   function toggleConfirmPasswordVisibility() {
@@ -105,7 +105,7 @@
     if (confirmPasswordInput) {
       confirmPasswordInput.type = showConfirmPassword ? 'text' : 'password';
     }
-    console.log('🔄 Confirm password visibility toggled:', showConfirmPassword);
+    console.log('Confirm password visibility toggled:', showConfirmPassword);
   }
 
   function isValidEmail(email: string): boolean {
@@ -130,7 +130,7 @@
   <div class="w-full max-w-5xl">
     <div class="text-center mb-12">
       <h1 class="text-5xl font-bold text-white mb-4" style="font-family: 'Cabin Sketch', cursive;">
-        Let’s get<span class="text-orange-500">Started</span>
+        Let's get<span class="text-orange-500">Started</span>
       </h1>
       <p class="text-gray-400 mb-8 text-xl" style="font-family: 'Epilogue', sans-serif;">Create your developer account</p>
     </div>
@@ -369,7 +369,7 @@
               </svg>
             </div>
             <div class="mt-6 text-center">
-              <h3 class="text-xl font-semibold text-orange-400 mb-2" style="font-family: 'Cabin Sketch', cursive;">🎉 {successMessage}</h3>
+              <h3 class="text-xl font-semibold text-orange-400 mb-2" style="font-family: 'Cabin Sketch', cursive;">{successMessage}</h3>
               <p class="text-gray-300 text-sm" style="font-family: 'Epilogue', sans-serif;">Welcome to your coding playground!</p>
             </div>
           </div>

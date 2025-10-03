@@ -10,12 +10,12 @@
   let orangeBoxes = [2, 5, 8, 11, 15, 18, 21, 24, 27, 30];
 
   onMount(() => {
-    console.log('🚀 === AUTH CONTAINER MOUNTED ===');
+    console.log('[DEBUG] === AUTH CONTAINER MOUNTED ===');
     console.log('Current view:', currentView);
   });
 
   function handleSwitch(event: CustomEvent) {
-    console.log('🔄 Switching auth view to:', event.detail);
+    console.log('[DEBUG] Switching auth view to:', event.detail);
     const newView = event.detail as 'login' | 'register';
     
     if (newView === currentView) return; // No transition needed
@@ -23,12 +23,12 @@
     // Start transition
     targetView = newView;
     currentView = 'transitioning';
-    console.log('🎬 Starting transition to:', targetView);
+    console.log('[DEBUG] Starting transition to:', targetView);
     
     // Keep 2 seconds timer
     setTimeout(() => {
       currentView = targetView;
-      console.log('✅ Transition completed to:', currentView);
+      console.log('[DEBUG] Transition completed to:', currentView);
     }, 2000);
   }
 </script>

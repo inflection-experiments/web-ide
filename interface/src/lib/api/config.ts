@@ -46,7 +46,7 @@ export const httpClient = {
     };
 
     try {
-      console.log(`🌐 API Request: ${config.method || 'GET'} ${url}`);
+      console.log(`API Request: ${config.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
       
       if (!response.ok) {
@@ -57,15 +57,15 @@ export const httpClient = {
           // If JSON parsing fails, use empty object
         }
         const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-        console.error(`❌ API Error: ${errorMessage}`);
+        console.error(`API Error: ${errorMessage}`);
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      console.log(`✅ API Success: ${config.method || 'GET'} ${url}`);
+      console.log(`API Success: ${config.method || 'GET'} ${url}`);
       return data;
     } catch (error) {
-      console.error(`💥 API request failed for ${endpoint}:`, error);
+      console.error(`API request failed for ${endpoint}:`, error);
       throw error;
     }
   }

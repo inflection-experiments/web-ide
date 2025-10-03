@@ -24,29 +24,29 @@
   async function loadDirectoryContents(dirName: string, fullPath: string): Promise<void> {
     const userId: string | null = localStorage.getItem('userId');
     if (!userId) {
-      console.error('❌ No userId in localStorage');
+      console.error('[ERROR] No userId in localStorage');
       return;
     }
 
-    console.log('📁 Loading directory contents:', { dirName, fullPath });
+    console.log('[DEBUG] Loading directory contents:', { dirName, fullPath });
     
     loadingDirs.add(dirName);
     loadingDirs = new Set(loadingDirs);
     
     try {
       const url: string = `http://localhost:9000/files/directory?userId=${encodeURIComponent(userId)}&path=${encodeURIComponent(fullPath)}`;
-      console.log('📡 Request URL:', url);
+      console.log('[DEBUG] Request URL:', url);
       
       const response: Response = await fetch(url);
       
       if (!response.ok) {
-        console.error('❌ Failed to load directory:', response.status, response.statusText);
+        console.error('[ERROR] Failed to load directory:', response.status, response.statusText);
         return;
       }
       
       const data: { items: string[] } = await response.json();
       const items: string[] = data.items || [];
-      console.log('📦 Directory items received:', items);
+      console.log('[DEBUG] Directory items received:', items);
       
       const dirTree: Record<string, any> = {};
       
@@ -57,13 +57,13 @@
         }
       }
       
-      console.log('🌳 Converted directory tree:', dirTree);
+      console.log('[DEBUG] Converted directory tree:', dirTree);
       
       directoryContents.set(dirName, dirTree);
       directoryContents = new Map(directoryContents);
       
     } catch (error) {
-      console.error(`💥 Error loading directory ${fullPath}:`, error);
+      console.error(`[ERROR] Error loading directory ${fullPath}:`, error);
     } finally {
       loadingDirs.delete(dirName);
       loadingDirs = new Set(loadingDirs);
@@ -71,7 +71,7 @@
   }
 
   async function forceRefreshAllExpandedDirs(): Promise<void> {
-    console.log('🔄 FORCE REFRESHING ALL EXPANDED DIRECTORIES');
+    console.log('[DEBUG] FORCE REFRESHING ALL EXPANDED DIRECTORIES');
     console.log('  - expandedDirs:', Array.from(expandedDirs));
     console.log('  - currentPath:', `"${currentPath}"`);
     
@@ -80,28 +80,28 @@
     
     for (const dirName of expandedDirs) {
       const fullPath = currentPath ? `${currentPath}/${dirName}` : dirName;
-      console.log(`  🔄 Reloading expanded directory: ${dirName} (${fullPath})`);
+      console.log(`  [DEBUG] Reloading expanded directory: ${dirName} (${fullPath})`);
       await loadDirectoryContents(dirName, fullPath);
     }
   }
 
   async function handleFileClick(name: string, isDir: boolean, fullPath: string): Promise<void> {
-    console.log('👆 File click:', { name, isDir, fullPath });
+    console.log('[DEBUG] File click:', { name, isDir, fullPath });
     
     if (isDir) {
       if (expandedDirs.has(name)) {
-        console.log('📂➡️📁 Collapsing directory:', name);
+        console.log('[DEBUG] Collapsing directory:', name);
         expandedDirs.delete(name);
         expandedDirs = new Set(expandedDirs);
       } else {
-        console.log('📁➡️📂 Expanding directory:', name);
+        console.log('[DEBUG] Expanding directory:', name);
         expandedDirs.add(name);
         expandedDirs = new Set(expandedDirs);
         
         await loadDirectoryContents(name, fullPath);
       }
     } else {
-      console.log('📄 Opening file:', fullPath);
+      console.log('[DEBUG] Opening file:', fullPath);
       onSelect(fullPath);
     }
   }
@@ -110,7 +110,7 @@
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🖱️ RIGHT CLICK CONTEXT MENU:');
+    console.log('[DEBUG] RIGHT CLICK CONTEXT MENU:');
     console.log('  - name:', name);
     console.log('  - fullPath:', `"${fullPath}"`);
     console.log('  - isDir:', isDir);
@@ -121,21 +121,21 @@
     contextMenuType = isDir ? 'directory' : 'file';
     showContextMenu = true;
     
-    console.log('🖱️ Context menu set:');
+    console.log('[DEBUG] Context menu set:');
     console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
     console.log('  - contextMenuType:', contextMenuType);
   }
 
   function handleEmptySpaceContextMenu(e: MouseEvent): void {
     if (e.target !== e.currentTarget) {
-      console.log('🚫 Ignoring context menu - event from child element');
+      console.log('[DEBUG] Ignoring context menu - event from child element');
       return;
     }
     
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🖱️ EMPTY SPACE RIGHT CLICK:');
+    console.log('[DEBUG] EMPTY SPACE RIGHT CLICK:');
     console.log('  - currentPath:', `"${currentPath}"`);
     
     contextMenuPosition = { x: e.clientX, y: e.clientY };
@@ -143,13 +143,13 @@
     contextMenuType = 'empty';
     showContextMenu = true;
     
-    console.log('🖱️ Empty space context menu set:');
+    console.log('[DEBUG] Empty space context menu set:');
     console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
     console.log('  - contextMenuType:', contextMenuType);
   }
 
   function createNewItem(type: 'file' | 'directory'): void {
-    console.log('✨ CREATE NEW ITEM TRIGGERED:');
+    console.log('[DEBUG] CREATE NEW ITEM TRIGGERED:');
     console.log('  - type:', type);
     console.log('  - contextMenuType:', contextMenuType);
     console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
@@ -161,7 +161,7 @@
   }
 
   function renameItem(): void {
-    console.log('✏️ RENAME ITEM TRIGGERED:');
+    console.log('[DEBUG] RENAME ITEM TRIGGERED:');
     console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
     
     const pathParts: string[] = contextMenuPath.split('/');
@@ -175,7 +175,7 @@
   }
 
   async function handleCreate(): Promise<void> {
-    console.log('🚀 HANDLE CREATE FUNCTION CALLED:');
+    console.log('[DEBUG] HANDLE CREATE FUNCTION CALLED:');
     console.log('  - newItemName:', `"${newItemName.trim()}"`);
     console.log('  - newItemType:', newItemType);
     console.log('  - contextMenuType:', contextMenuType);
@@ -189,35 +189,35 @@
     
     let parentPath: string = '';
     
-    console.log('🎯 DETERMINING PARENT PATH:');
+    console.log('[DEBUG] DETERMINING PARENT PATH:');
     if (contextMenuType === 'directory') {
       parentPath = contextMenuPath;
-      console.log('  📂 Context: DIRECTORY - using contextMenuPath as parent');
+      console.log('  [DEBUG] Context: DIRECTORY - using contextMenuPath as parent');
       console.log('     parentPath =', `"${parentPath}"`);
     } else if (contextMenuType === 'file') {
       const pathParts: string[] = contextMenuPath.split('/');
       pathParts.pop();
       parentPath = pathParts.join('/');
-      console.log('  📄 Context: FILE - using file\'s parent directory');
+      console.log('  [DEBUG] Context: FILE - using file\'s parent directory');
       console.log('     parentPath =', `"${parentPath}"`);
     } else {
       parentPath = currentPath;
-      console.log('  🔳 Context: EMPTY - using currentPath');
+      console.log('  [DEBUG] Context: EMPTY - using currentPath');
       console.log('     parentPath =', `"${parentPath}"`);
     }
     
-    console.log('✅ FINAL PARENT PATH:', `"${parentPath}"`);
+    console.log('[DEBUG] FINAL PARENT PATH:', `"${parentPath}"`);
     
     try {
       const userId: string | null = localStorage.getItem('userId');
       
       if (!userId) {
-        console.error('❌ No userId in localStorage');
+        console.error('[ERROR] No userId in localStorage');
         alert('Session expired. Please refresh the page.');
         return;
       }
       
-      console.log('👤 UserId:', userId);
+      console.log('[DEBUG] UserId:', userId);
       
       const requestPayload = {
         userId: userId,
@@ -227,7 +227,7 @@
         parentPath: parentPath
       };
       
-      console.log('📤 CREATE REQUEST PAYLOAD:');
+      console.log('[DEBUG] CREATE REQUEST PAYLOAD:');
       console.log(JSON.stringify(requestPayload, null, 2));
       
       const response: Response = await fetch('http://localhost:9000/files/create', {
@@ -236,42 +236,42 @@
         body: JSON.stringify(requestPayload)
       });
       
-      console.log('📥 CREATE Response status:', response.status);
+      console.log('[DEBUG] CREATE Response status:', response.status);
       const result = await response.json();
-      console.log('📥 CREATE Server response:', result);
+      console.log('[DEBUG] CREATE Server response:', result);
       
       if (response.ok) {
-        console.log('🎉 CREATE SUCCESS!');
+        console.log('[DEBUG] CREATE SUCCESS!');
         showCreateDialog = false;
         
         if (contextMenuType === 'directory') {
-          console.log('🔄 Refreshing parent directory after create...');
+          console.log('[DEBUG] Refreshing parent directory after create...');
           const dirName = contextMenuPath.split('/').pop() || contextMenuPath;
           await loadDirectoryContents(dirName, contextMenuPath);
         }
         
-        console.log('🔄 Triggering main tree refresh after create...');
+        console.log('[DEBUG] Triggering main tree refresh after create...');
         await forceRefreshAllExpandedDirs();
         window.dispatchEvent(new CustomEvent('refreshFileTree'));
         
       } else {
-        console.error('❌ CREATE FAILED:', result.error);
+        console.error('[ERROR] CREATE FAILED:', result.error);
         alert(`Failed to create item: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('💥 CREATE Network error:', error);
+      console.error('[ERROR] CREATE Network error:', error);
       alert('Network error occurred.');
     }
   }
 
   async function handleRename(): Promise<void> {
-    console.log('📝 === HANDLE RENAME STARTED ===');
+    console.log('[DEBUG] === HANDLE RENAME STARTED ===');
     console.log('  - oldItemName:', `"${oldItemName}"`);
     console.log('  - newItemName:', `"${newItemName.trim()}"`);
     console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
     
     if (!newItemName.trim() || newItemName.trim() === oldItemName) {
-      console.log('❌ Rename cancelled - no change in name');
+      console.log('[DEBUG] Rename cancelled - no change in name');
       return;
     }
     
@@ -279,7 +279,7 @@
     pathParts[pathParts.length - 1] = newItemName.trim();
     const newPath: string = pathParts.join('/');
     
-    console.log('🛠️ RENAME PATH CALCULATION:');
+    console.log('[DEBUG] RENAME PATH CALCULATION:');
     console.log('  - oldPath:', `"${contextMenuPath}"`);
     console.log('  - newPath:', `"${newPath}"`);
     console.log('  - pathParts:', pathParts);
@@ -287,11 +287,11 @@
     try {
       const userId: string | null = localStorage.getItem('userId');
       if (!userId) {
-        console.error('❌ No userId for rename');
+        console.error('[ERROR] No userId for rename');
         return;
       }
       
-      console.log('👤 Rename UserId:', userId);
+      console.log('[DEBUG] Rename UserId:', userId);
       
       const renamePayload = {
         userId,
@@ -299,7 +299,7 @@
         newPath: newPath
       };
       
-      console.log('📤 RENAME REQUEST PAYLOAD:');
+      console.log('[DEBUG] RENAME REQUEST PAYLOAD:');
       console.log(JSON.stringify(renamePayload, null, 2));
       
       const response: Response = await fetch('http://localhost:9000/files/rename', {
@@ -308,85 +308,85 @@
         body: JSON.stringify(renamePayload)
       });
       
-      console.log('📥 RENAME Response status:', response.status);
+      console.log('[DEBUG] RENAME Response status:', response.status);
       const result = await response.json();
-      console.log('📥 RENAME Server response:', result);
+      console.log('[DEBUG] RENAME Server response:', result);
       
       if (response.ok) {
-        console.log('🎉 RENAME SUCCESS!');
+        console.log('[DEBUG] RENAME SUCCESS!');
         showRenameDialog = false;
         
-        console.log('🔄 FORCE REFRESHING ALL EXPANDED DIRS AFTER RENAME...');
+        console.log('[DEBUG] FORCE REFRESHING ALL EXPANDED DIRS AFTER RENAME...');
         await forceRefreshAllExpandedDirs();
         
-        console.log('🔄 Triggering main tree refresh after rename...');
+        console.log('[DEBUG] Triggering main tree refresh after rename...');
         window.dispatchEvent(new CustomEvent('refreshFileTree'));
         
       } else {
-        console.error('❌ RENAME FAILED:', result.error || 'Unknown error');
+        console.error('[ERROR] RENAME FAILED:', result.error || 'Unknown error');
         alert('Failed to rename item: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('💥 RENAME Network error:', error);
+      console.error('[ERROR] RENAME Network error:', error);
       alert('Network error during rename.');
     }
     
-    console.log('📝 === HANDLE RENAME COMPLETED ===');
+    console.log('[DEBUG] === HANDLE RENAME COMPLETED ===');
   }
 
   async function handleDelete(): Promise<void> {
     const itemName: string = contextMenuPath.split('/').pop() || contextMenuPath;
     
-    console.log('🗑️ === HANDLE DELETE STARTED ===');
+    console.log('[DEBUG] === HANDLE DELETE STARTED ===');
     console.log('  - itemName:', `"${itemName}"`);
     console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
     console.log('  - contextMenuType:', contextMenuType);
     
     if (!confirm(`Are you sure you want to delete "${itemName}"?`)) {
-      console.log('❌ Delete cancelled by user');
+      console.log('[DEBUG] Delete cancelled by user');
       return;
     }
     
     try {
       const userId: string | null = localStorage.getItem('userId');
       if (!userId) {
-        console.error('❌ No userId for delete');
+        console.error('[ERROR] No userId for delete');
         return;
       }
       
-      console.log('👤 Delete UserId:', userId);
+      console.log('[DEBUG] Delete UserId:', userId);
       
       const deleteUrl = `http://localhost:9000/files/delete?userId=${userId}&path=${encodeURIComponent(contextMenuPath)}`;
-      console.log('📡 DELETE URL:', deleteUrl);
+      console.log('[DEBUG] DELETE URL:', deleteUrl);
       
       const response: Response = await fetch(deleteUrl, {
         method: 'DELETE'
       });
       
-      console.log('📥 DELETE Response status:', response.status);
+      console.log('[DEBUG] DELETE Response status:', response.status);
       const result = await response.json();
-      console.log('📥 DELETE Server response:', result);
+      console.log('[DEBUG] DELETE Server response:', result);
       
       if (response.ok) {
-        console.log('🎉 DELETE SUCCESS!');
+        console.log('[DEBUG] DELETE SUCCESS!');
         showContextMenu = false;
         
-        console.log('🔄 FORCE REFRESHING ALL EXPANDED DIRS AFTER DELETE...');
+        console.log('[DEBUG] FORCE REFRESHING ALL EXPANDED DIRS AFTER DELETE...');
         await forceRefreshAllExpandedDirs();
         
-        console.log('🔄 Triggering main tree refresh after delete...');
+        console.log('[DEBUG] Triggering main tree refresh after delete...');
         window.dispatchEvent(new CustomEvent('refreshFileTree'));
         
       } else {
-        console.error('❌ DELETE FAILED:', result.error || 'Unknown error');
+        console.error('[ERROR] DELETE FAILED:', result.error || 'Unknown error');
         alert('Failed to delete item: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('💥 DELETE Network error:', error);
+      console.error('[ERROR] DELETE Network error:', error);
       alert('Network error during delete.');
     }
     
-    console.log('🗑️ === HANDLE DELETE COMPLETED ===');
+    console.log('[DEBUG] === HANDLE DELETE COMPLETED ===');
   }
 
   $effect(() => {
@@ -442,7 +442,7 @@
           <div class="ml-6 border-l border-gray-300 dark:border-gray-700 pl-3 mt-1 space-y-0.5">
             {#if loadingDirs.has(name)}
               <div class="text-gray-500 dark:text-gray-400 italic py-2 text-sm flex items-center gap-2">
-                <span class="animate-spin">⟳</span>
+                <span class="animate-spin">Loading</span>
                 Loading...
               </div>
             {:else if directoryContents.has(name)}
@@ -455,13 +455,13 @@
                 />
               {:else}
                 <div class="text-gray-500 dark:text-gray-400 italic py-2 text-sm flex items-center gap-2">
-                  <span class="text-xs">📭</span>
+                  <span class="text-xs">Empty</span>
                   Empty
                 </div>
               {/if}
             {:else}
               <div class="text-red-600 dark:text-red-400 italic py-2 text-sm flex items-center gap-2">
-                <span class="text-xs">⚠️</span>
+                <span class="text-xs">Warning</span>
                 Failed to load
               </div>
             {/if}
@@ -511,11 +511,11 @@
       
       {#if contextMenuType === 'file' || contextMenuType === 'directory'}
         <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={renameItem}>
-          <span class="text-base">✏️</span>
+          <span class="text-base">Edit</span>
           <span>Rename</span>
         </div>
         <div class="px-4 py-3 cursor-pointer text-red-600 dark:text-red-400 flex items-center gap-3 text-sm transition-colors hover:bg-red-50 dark:hover:bg-red-900/20" on:click={handleDelete}>
-          <span class="text-base">🗑️</span>
+          <span class="text-base">Delete</span>
           <span>Delete</span>
         </div>
       {/if}
@@ -529,11 +529,11 @@
         <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
           Create New {newItemType === 'file' ? 'File' : 'Folder'}
           {#if contextMenuType === 'directory'}
-            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">📂 Inside: {contextMenuPath || 'root'}</small>
+            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">Inside: {contextMenuPath || 'root'}</small>
           {:else if contextMenuType === 'file'}
-            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">📁 In same directory as: {contextMenuPath}</small>
+            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">In same directory as: {contextMenuPath}</small>
           {:else}
-            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">📁 In: {currentPath || 'root'}</small>
+            <br><small class="text-sm text-gray-600 dark:text-gray-400 font-normal">In: {currentPath || 'root'}</small>
           {/if}
         </h3>
         <input 

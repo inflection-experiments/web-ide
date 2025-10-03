@@ -30,7 +30,7 @@ export class AuthAPI {
    * Login user with credentials
    */
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
-    console.log('🔑 AuthAPI: Sending login request');
+    console.log('AuthAPI: Sending login request');
     return httpClient.request<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, {
       method: 'POST',
       body: JSON.stringify(credentials),
@@ -41,7 +41,7 @@ export class AuthAPI {
    * Register new user account
    */
   static async register(userData: RegisterRequest): Promise<AuthResponse> {
-    console.log('📝 AuthAPI: Sending registration request');
+    console.log('AuthAPI: Sending registration request');
     return httpClient.request<AuthResponse>(API_ENDPOINTS.AUTH.REGISTER, {
       method: 'POST',
       body: JSON.stringify(userData),
@@ -52,7 +52,7 @@ export class AuthAPI {
    * Get current user profile
    */
   static async getCurrentUser(token: string): Promise<User> {
-    console.log('👤 AuthAPI: Getting current user');
+    console.log('AuthAPI: Getting current user');
     return httpClient.request<User>(API_ENDPOINTS.AUTH.ME, {
       method: 'GET',
       headers: {
@@ -66,7 +66,7 @@ export class AuthAPI {
    */
   static isValidToken(token: string | null): boolean {
     const isValid = Boolean(token && token.length > 0 && typeof token === 'string');
-    console.log('🔍 Token validation:', isValid);
+    console.log('Token validation:', isValid);
     return isValid;
   }
 }

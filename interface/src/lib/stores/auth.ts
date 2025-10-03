@@ -11,12 +11,12 @@ export interface AuthState {
 }
 
 const createAuthStore = () => {
-  // ✅ FIXED: Start with loading: true to prevent flash
+  // FIXED: Start with loading: true to prevent flash
   const initialState: AuthState = {
     user: null,
     token: null,
     isAuthenticated: false,
-    loading: true  // ✅ Changed from false to true
+    loading: true  // Changed from false to true
   };
 
   const { subscribe, set, update } = writable(initialState);
@@ -25,20 +25,20 @@ const createAuthStore = () => {
     subscribe,
     
     async login(usernameOrEmail: string, password: string): Promise<{ success: boolean; error?: string }> {
-      console.log('🔑 Attempting login for:', usernameOrEmail);
+      console.log('Attempting login for:', usernameOrEmail);
       update(state => ({ ...state, loading: true }));
       
       try {
         const response = await AuthAPI.login({ usernameOrEmail, password });
-        console.log('✅ Login successful:', response.user.username);
-        console.log(`🆔 [DEBUG] REAL User ID from database: ${response.user.id}`);
+        console.log('Login successful:', response.user.username);
+        console.log(`[DEBUG] REAL User ID from database: ${response.user.id}`);
         
         if (browser) {
           localStorage.setItem('auth_token', response.token);
-          console.log('💾 Token stored in localStorage');
+          console.log('Token stored in localStorage');
         }
 
-        // ✅ CRITICAL FIX: Set socket auth token for real user ID
+        // CRITICAL FIX: Set socket auth token for real user ID
         setSocketAuth(response.token);
 
         set({
@@ -48,9 +48,9 @@ const createAuthStore = () => {
           loading: false
         });
 
-        // ✅ ADDED: Auto-reload after successful login to initialize workspace properly
+        // ADDED: Auto-reload after successful login to initialize workspace properly
         if (browser) {
-          console.log('🔄 Reloading page to initialize workspace with REAL user ID...');
+          console.log('Reloading page to initialize workspace with REAL user ID...');
           setTimeout(() => {
             window.location.reload();
           }, 500); // Small delay to ensure state is saved
@@ -58,7 +58,7 @@ const createAuthStore = () => {
 
         return { success: true };
       } catch (error) {
-        console.error('❌ Login failed:', error);
+        console.error('Login failed:', error);
         update(state => ({ ...state, loading: false }));
         return { 
           success: false, 
@@ -68,20 +68,20 @@ const createAuthStore = () => {
     },
 
     async register(username: string, email: string, password: string): Promise<{ success: boolean; error?: string }> {
-      console.log('📝 Attempting registration for:', username);
+      console.log('Attempting registration for:', username);
       update(state => ({ ...state, loading: true }));
       
       try {
         const response = await AuthAPI.register({ username, email, password });
-        console.log('✅ Registration successful:', response.user.username);
-        console.log(`🆔 [DEBUG] REAL User ID from database: ${response.user.id}`);
+        console.log('Registration successful:', response.user.username);
+        console.log(`[DEBUG] REAL User ID from database: ${response.user.id}`);
         
         if (browser) {
           localStorage.setItem('auth_token', response.token);
-          console.log('💾 Registration token stored in localStorage');
+          console.log('Registration token stored in localStorage');
         }
 
-        // ✅ CRITICAL FIX: Set socket auth token for real user ID
+        // CRITICAL FIX: Set socket auth token for real user ID
         setSocketAuth(response.token);
         
         set({
@@ -93,7 +93,7 @@ const createAuthStore = () => {
 
         return { success: true };
       } catch (error) {
-        console.error('❌ Registration failed:', error);
+        console.error('Registration failed:', error);
         update(state => ({ ...state, loading: false }));
         return { 
           success: false, 
@@ -103,57 +103,57 @@ const createAuthStore = () => {
     },
 
     logout(): void {
-      console.log('👋 Logging out user');
+      console.log('Logging out user');
       if (browser) {
         localStorage.removeItem('auth_token');
       }
       
-      // ✅ CLEAR SOCKET AUTH ON LOGOUT
+      // CLEAR SOCKET AUTH ON LOGOUT
       socket.auth = {};
       socket.disconnect();
       
       set({ ...initialState, loading: false });
     },
 
-    // ✅ ENHANCED: Better state management during auth check
+    // ENHANCED: Better state management during auth check
     async checkAuth(): Promise<void> {
       if (!browser) {
-        // ✅ FIXED: Set loading to false on server
+        // FIXED: Set loading to false on server
         set({ ...initialState, loading: false });
         return;
       }
       
-      console.log('🔍 === CHECKING AUTHENTICATION ON STARTUP ===');
+      console.log('=== CHECKING AUTHENTICATION ON STARTUP ===');
       
       const token = localStorage.getItem('auth_token');
       console.log('Token found in localStorage:', token ? 'YES' : 'NO');
       
       if (!AuthAPI.isValidToken(token)) {
-        console.log('❌ No valid token found');
+        console.log('No valid token found');
         set({ ...initialState, loading: false });
         return;
       }
 
-      console.log('🔍 Valid token found, validating with server...');
-      // ✅ Keep loading: true while validating
+      console.log('Valid token found, validating with server...');
+      // Keep loading: true while validating
 
       try {
         const user = await AuthAPI.getCurrentUser(token!);
-        console.log('✅ Auth check successful:', user.username);
-        console.log(`🆔 [DEBUG] REAL User ID from database: ${user.id}`);
+        console.log('Auth check successful:', user.username);
+        console.log(`[DEBUG] REAL User ID from database: ${user.id}`);
         
-        // ✅ CRITICAL FIX: Set socket auth on startup for persistent files
+        // CRITICAL FIX: Set socket auth on startup for persistent files
         setSocketAuth(token!);
         
         set({
           user,
           token,
           isAuthenticated: true,
-          loading: false  // ✅ Only set loading: false after success
+          loading: false  // Only set loading: false after success
         });
         
       } catch (error) {
-        console.error('❌ Auth validation failed:', error);
+        console.error('Auth validation failed:', error);
         
         if (browser) {
           localStorage.removeItem('auth_token');
@@ -164,21 +164,21 @@ const createAuthStore = () => {
     }
   };
 
-  // ✅ CRITICAL FIX: Set authentication token in socket for real user ID persistence
+  // CRITICAL FIX: Set authentication token in socket for real user ID persistence
   function setSocketAuth(token: string): void {
-    console.log('🔑 Auth: Setting socket authentication with JWT token for REAL user ID persistence...');
+    console.log('Auth: Setting socket authentication with JWT token for REAL user ID persistence...');
     
-    // ✅ SET SOCKET AUTH DYNAMICALLY TO USE REAL USER ID
+    // SET SOCKET AUTH DYNAMICALLY TO USE REAL USER ID
     socket.auth = { token };
     
-    // ✅ RECONNECT SOCKET WITH NEW AUTH FOR PERSISTENT FILES
+    // RECONNECT SOCKET WITH NEW AUTH FOR PERSISTENT FILES
     if (socket.connected) {
-      console.log('🔄 Auth: Reconnecting socket with REAL user authentication...');
+      console.log('Auth: Reconnecting socket with REAL user authentication...');
       socket.disconnect();
     }
     socket.connect();
     
-    console.log('✅ Auth: Socket authentication updated - files will now persist across logins with REAL user ID!');
+    console.log('Auth: Socket authentication updated - files will now persist across logins with REAL user ID!');
   }
 };
 

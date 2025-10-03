@@ -5,9 +5,14 @@ services:
   app:
     build: .
     ports:
-      - "9000:9000"    # Backend API and Socket.IO
-      - "5173:5173"    # Frontend dev server (if needed)
-      - "6001:3000"    # User Express apps
+      - "9000:9000"          # Backend API and Socket.IO - KEEP
+      - "5173:5173"          # Frontend dev server - KEEP
+      # ✅ REMOVE: - "6001:3000" (no longer needed)
+      # ✅ ADD: Dynamic port ranges for user containers
+      - "3001-3100:3001-3100"  # User container port range 1
+      - "4001-4100:4001-4100"  # User container port range 2
+      - "5001-5100:5001-5100"  # User container port range 3
+      - "8001-8100:8001-8100"  # User container port range 4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # ✅ ONLY FIX: REMOVED SHARED VOLUME - NO MORE ./server/user:/app/user
@@ -31,7 +36,7 @@ services:
       - minio
     networks:
       - playground_network
-
+  
   # PostgreSQL Database
   postgres:
     image: postgres:15
@@ -69,8 +74,8 @@ services:
     container_name: minio_storage
     command: server /data --console-address ":9002"
     ports:
-      - "9001:9000"
-      - "9002:9002"
+      - "9001:9000"    # MinIO API
+      - "9002:9002"    # MinIO Console
     volumes:
       - minio_data:/data
     environment:
@@ -110,7 +115,7 @@ services:
       context: ./interface
       dockerfile: Dockerfile.dev
     ports:
-      - "5174:5173"
+      - "5174:5173"    # Changed from 5174:5173 to avoid conflicts
     volumes:
       - ./interface:/app
       - /app/node_modules

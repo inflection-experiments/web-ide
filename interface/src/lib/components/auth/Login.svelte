@@ -22,7 +22,7 @@
       return;
     }
 
-    console.log('🔑 Login attempt:', { usernameOrEmail: usernameOrEmail.trim() });
+    console.log('Login attempt:', { usernameOrEmail: usernameOrEmail.trim() });
     const result = await auth.login(usernameOrEmail.trim(), password);
     
     if (!result.success) {
@@ -40,7 +40,7 @@
     if (passwordInput) {
       passwordInput.type = showPassword ? 'text' : 'password';
     }
-    console.log('🔄 Password visibility toggled:', showPassword);
+    console.log('Password visibility toggled:', showPassword);
   }
 
   function handleKeyPress(event: KeyboardEvent) {

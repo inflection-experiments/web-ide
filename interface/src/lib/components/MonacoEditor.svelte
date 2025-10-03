@@ -26,17 +26,17 @@
   function manualSave() {
     if (!browser) return;
     
-    console.log(`💾 [DEBUG] Manual save triggered for: ${selectedFile}`);
+    console.log(`[DEBUG] Manual save triggered for: ${selectedFile}`);
     
     if (!selectedFile || code === undefined || code === null) {
-      console.log('❌ [DEBUG] Cannot save - no file selected or no code');
+      console.log('[DEBUG] Cannot save - no file selected or no code');
       return;
     }
     
     if (saveTimeout) {
       clearTimeout(saveTimeout);
       saveTimeout = null;
-      console.log('🔄 [DEBUG] Cleared auto-save timeout');
+      console.log('[DEBUG] Cleared auto-save timeout');
     }
     
     let cleanCode = String(code || '');
@@ -44,17 +44,17 @@
     cleanCode = cleanCode.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
     cleanCode = cleanCode.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
     
-    console.log(`🧹 [DEBUG] Manual save - Original: ${originalLength}, Cleaned: ${cleanCode.length}`);
+    console.log(`[DEBUG] Manual save - Original: ${originalLength}, Cleaned: ${cleanCode.length}`);
     
     selectedFileContent = cleanCode;
     
     if (onContentSave) {
       onContentSave(selectedFile, cleanCode);
-      console.log(`✅ [DEBUG] Manual save - onContentSave called`);
+      console.log(`[DEBUG] Manual save - onContentSave called`);
     }
     
     dispatch('save', { path: selectedFile, content: cleanCode });
-    console.log(`📡 [DEBUG] Manual save - Event dispatched`);
+    console.log(`[DEBUG] Manual save - Event dispatched`);
   }
 
   // KEYBOARD SHORTCUTS
@@ -64,7 +64,7 @@
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
       event.preventDefault();
       event.stopPropagation();
-      console.log('🎯 [DEBUG] Ctrl+S detected, triggering save');
+      console.log('[DEBUG] Ctrl+S detected, triggering save');
       manualSave();
       return false;
     }
@@ -127,7 +127,7 @@
   onMount(async () => {
     if (!browser) return;
     
-    console.log('🚀 [DEBUG] MonacoEditor mounting');
+    console.log('[DEBUG] MonacoEditor mounting');
     
     document.addEventListener('keydown', handleKeyDown, true);
     
@@ -139,7 +139,7 @@
         return;
       }
       
-      console.log('✅ [DEBUG] Monaco loaded successfully');
+      console.log('[DEBUG] Monaco loaded successfully');
       
       editor = monaco.editor.create(editorContainer, {
         value: '',
@@ -170,10 +170,10 @@
         padding: { top: 0, bottom: 0 }
       });
 
-      console.log('✅ [DEBUG] Monaco editor created');
+      console.log('[DEBUG] Monaco editor created');
 
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-        console.log('🎯 [DEBUG] Monaco keybinding triggered');
+        console.log('[DEBUG] Monaco keybinding triggered');
         manualSave();
       });
 
@@ -182,7 +182,7 @@
         label: 'Save File',
         keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
         run: () => {
-          console.log('🎯 [DEBUG] Monaco action triggered');
+          console.log('[DEBUG] Monaco action triggered');
           manualSave();
         }
       });
@@ -191,7 +191,7 @@
         const newCode = editor.getValue();
         if (newCode !== code) {
           code = newCode;
-          console.log('📝 [DEBUG] Editor content changed, length:', code.length);
+          console.log('[DEBUG] Editor content changed, length:', code.length);
         }
       });
 
@@ -206,10 +206,10 @@
       });
       resizeObserver.observe(editorContainer);
       
-      console.log('✅ [DEBUG] Monaco setup complete');
+      console.log('[DEBUG] Monaco setup complete');
       
     } catch (error) {
-      console.error('❌ [ERROR] Failed to initialize Monaco Editor:', error);
+      console.error('[ERROR] Failed to initialize Monaco Editor:', error);
       createFallbackEditor();
     }
   });
@@ -217,7 +217,7 @@
   function createFallbackEditor() {
     if (!browser) return;
     
-    console.log('🔄 [DEBUG] Creating fallback editor');
+    console.log('[DEBUG] Creating fallback editor');
     
     const bgColor = theme === 'dark' ? '#1e1e1e' : '#ffffff';
     const textColor = theme === 'dark' ? '#d4d4d4' : '#333333';
@@ -292,9 +292,9 @@
     
     try {
       monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs');
-      console.log(`🎨 [DEBUG] Theme updated to: ${theme}`);
+      console.log(`[DEBUG] Theme updated to: ${theme}`);
     } catch (error) {
-      console.error('❌ [ERROR] Failed to update theme:', error);
+      console.error('[ERROR] Failed to update theme:', error);
     }
   }
 
@@ -308,7 +308,7 @@
     
     if (selectedFileContent === lastContent) return;
     
-    console.log('🔄 [DEBUG] Updating editor content');
+    console.log('[DEBUG] Updating editor content');
     
     lastContent = selectedFileContent;
     code = selectedFileContent;
@@ -330,7 +330,7 @@
         monaco.editor.setModelLanguage(editor.getModel(), language);
       }
     } catch (error) {
-      console.error('❌ [ERROR] Error updating editor content:', error);
+      console.error('[ERROR] Error updating editor content:', error);
     }
   }
 
@@ -341,7 +341,7 @@
     }
 
     saveTimeout = setTimeout(() => {
-      console.log(`💾 [DEBUG] Auto-save triggered for: ${selectedFile}`);
+      console.log(`[DEBUG] Auto-save triggered for: ${selectedFile}`);
       
       let cleanCode = String(code || '');
       cleanCode = cleanCode.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');

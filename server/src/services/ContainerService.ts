@@ -7,148 +7,148 @@ export class ContainerService {
   private cloudStorage: CloudStorageService = new CloudStorageService();
 
   async initialize(): Promise<void> {
-    console.log('🚀 [Service] =================== SERVICE INITIALIZE START ===================');
+    console.log('[Service] =================== SERVICE INITIALIZE START ===================');
     
     // Initialize Docker
-    console.log('🚀 [Service] Initializing Docker...');
+    console.log('[Service] Initializing Docker...');
     await this.dockerManager.buildUserImage();
-    console.log('✅ [Service] Docker initialized');
+    console.log('[Service] Docker initialized');
     
     // Initialize Cloud Storage immediately (not with delay)
-    console.log('🚀 [Service] Initializing Cloud Storage...');
+    console.log('[Service] Initializing Cloud Storage...');
     try {
       await this.cloudStorage.initialize();
-      console.log('✅ [Service] Cloud storage initialized successfully');
+      console.log('[Service] Cloud storage initialized successfully');
     } catch (error) {
-      console.error('❌ [Service] Cloud storage initialization failed:', error);
-      console.warn('⚠️ [Service] Continuing without cloud storage');
+      console.error('[Service] Cloud storage initialization failed:', error);
+      console.warn('[Service] Continuing without cloud storage');
     }
     
     // Test cloud connection
-    console.log('🚀 [Service] Testing cloud connection...');
+    console.log('[Service] Testing cloud connection...');
     const cloudConnected = await this.cloudStorage.testConnection();
-    console.log(`🔍 [Service] Cloud connection test result: ${cloudConnected}`);
+    console.log(`[Service] Cloud connection test result: ${cloudConnected}`);
     
-    console.log('✅ [Service] =================== SERVICE INITIALIZE COMPLETE ===================');
+    console.log('[Service] =================== SERVICE INITIALIZE COMPLETE ===================');
   }
 
   async createDirectory(userId: string, dirPath: string): Promise<void> {
-    console.log(`\n🔧 [Service] =================== CREATE DIRECTORY START ===================`);
-    console.log(`🔧 [Service] User ID: ${userId}`);
-    console.log(`🔧 [Service] Directory Path: ${dirPath}`);
+    console.log(`\n[Service] =================== CREATE DIRECTORY START ===================`);
+    console.log(`[Service] User ID: ${userId}`);
+    console.log(`[Service] Directory Path: ${dirPath}`);
     
     try {
       // Create in Docker container
-      console.log(`🔧 [Service] Creating directory in Docker container...`);
+      console.log(`[Service] Creating directory in Docker container...`);
       await this.dockerManager.createDirectory(userId, dirPath);
-      console.log(`✅ [Service] Directory created in container: ${dirPath}`);
+      console.log(`[Service] Directory created in container: ${dirPath}`);
       
       // IMMEDIATELY create in cloud storage with placeholder
-      console.log(`🔧 [Service] Creating directory in cloud storage...`);
+      console.log(`[Service] Creating directory in cloud storage...`);
       const cloudSuccess = await this.cloudStorage.createEmptyDirectory(userId, dirPath);
       
       if (cloudSuccess) {
-        console.log(`✅ [Service] Empty directory created in cloud: ${dirPath}`);
+        console.log(`[Service] Empty directory created in cloud: ${dirPath}`);
       } else {
-        console.warn(`⚠️ [Service] Cloud directory creation failed: ${dirPath}`);
+        console.warn(`[Service] Cloud directory creation failed: ${dirPath}`);
       }
       
-      console.log(`✅ [Service] =================== CREATE DIRECTORY SUCCESS ===================\n`);
+      console.log(`[Service] =================== CREATE DIRECTORY SUCCESS ===================\n`);
     } catch (error) {
-      console.error(`❌ [Service] =================== CREATE DIRECTORY FAILED ===================`);
-      console.error(`❌ [Service] Directory creation failed for ${dirPath}:`, error);
-      console.error(`❌ [Service] =================== CREATE DIRECTORY FAILED ===================\n`);
+      console.error(`[Service] =================== CREATE DIRECTORY FAILED ===================`);
+      console.error(`[Service] Directory creation failed for ${dirPath}:`, error);
+      console.error(`[Service] =================== CREATE DIRECTORY FAILED ===================\n`);
       throw error;
     }
   }
 
   // Rest of your existing methods...
   async createUserSession(userId: string): Promise<void> {
-    console.log(`🔄 [Service] Creating session for user: ${userId}`);
+    console.log(`[Service] Creating session for user: ${userId}`);
     
     await this.dockerManager.createUserContainer(userId);
-    console.log(`✅ [Service] Docker container created for: ${userId}`);
+    console.log(`[Service] Docker container created for: ${userId}`);
     
     await this.restoreUserFiles(userId);
-    console.log(`✅ [Service] Session created for: ${userId}`);
+    console.log(`[Service] Session created for: ${userId}`);
   }
 
   private async restoreUserFiles(userId: string): Promise<void> {
     try {
-      console.log(`🔄 [Service] Restoring files for user: ${userId}`);
+      console.log(`[Service] Restoring files for user: ${userId}`);
       
       const cloudFiles = await this.cloudStorage.restoreAllUserFiles(userId);
       
       if (cloudFiles.size === 0) {
-        console.log(`ℹ️ [Service] No files to restore for user: ${userId}`);
+        console.log(`[Service] No files to restore for user: ${userId}`);
         return;
       }
       
       for (const [filePath, content] of cloudFiles) {
         try {
           await this.dockerManager.writeFileToContainer(userId, filePath, content);
-          console.log(`✅ [Service] Restored file: ${filePath}`);
+          console.log(`[Service] Restored file: ${filePath}`);
         } catch (error) {
-          console.error(`❌ [Service] Failed to restore file ${filePath}:`, error);
+          console.error(`[Service] Failed to restore file ${filePath}:`, error);
         }
       }
       
-      console.log(`✅ [Service] Restored ${cloudFiles.size} files for user: ${userId}`);
+      console.log(`[Service] Restored ${cloudFiles.size} files for user: ${userId}`);
     } catch (error) {
-      console.error(`❌ [Service] File restoration failed for user ${userId}:`, error);
+      console.error(`[Service] File restoration failed for user ${userId}:`, error);
     }
   }
 
   async handleFileChange(userId: string, filePath: string, content: string): Promise<void> {
-    console.log(`🔄 [Service] Handling file change: ${userId}/${filePath}`);
+    console.log(`[Service] Handling file change: ${userId}/${filePath}`);
     
     try {
       await this.dockerManager.writeFileToContainer(userId, filePath, content);
-      console.log(`✅ [Service] File saved to container: ${filePath}`);
+      console.log(`[Service] File saved to container: ${filePath}`);
       
       this.cloudStorage.saveFile(userId, filePath, content)
         .then((success) => {
           if (success) {
-            console.log(`✅ [Service] File saved to cloud: ${filePath}`);
+            console.log(`[Service] File saved to cloud: ${filePath}`);
           } else {
-            console.warn(`⚠️ [Service] Cloud save failed: ${filePath}`);
+            console.warn(`[Service] Cloud save failed: ${filePath}`);
           }
         })
         .catch((error) => {
-          console.error(`❌ [Service] Cloud save error for ${filePath}:`, error);
+          console.error(`[Service] Cloud save error for ${filePath}:`, error);
         });
       
-      console.log(`✅ [Service] File change handled: ${filePath}`);
+      console.log(`[Service] File change handled: ${filePath}`);
     } catch (error) {
-      console.error(`❌ [Service] File change failed for ${filePath}:`, error);
+      console.error(`[Service] File change failed for ${filePath}:`, error);
       throw error;
     }
   }
 
   async deleteUserDirectory(userId: string, dirPath: string): Promise<void> {
     try {
-      console.log(`🔄 [Service] Deleting directory: ${userId}/${dirPath}`);
+      console.log(`[Service] Deleting directory: ${userId}/${dirPath}`);
       
       await this.dockerManager.deletePath(userId, dirPath);
-      console.log(`✅ [Service] Directory deleted from container: ${dirPath}`);
+      console.log(`[Service] Directory deleted from container: ${dirPath}`);
       
       const cloudDeleted = await this.cloudStorage.deleteDirectory(userId, dirPath);
       if (cloudDeleted) {
-        console.log(`✅ [Service] Directory deleted from cloud: ${dirPath}`);
+        console.log(`[Service] Directory deleted from cloud: ${dirPath}`);
       } else {
-        console.warn(`⚠️ [Service] Cloud directory delete failed: ${dirPath}`);
+        console.warn(`[Service] Cloud directory delete failed: ${dirPath}`);
       }
       
-      console.log(`✅ [Service] Directory deletion completed: ${dirPath}`);
+      console.log(`[Service] Directory deletion completed: ${dirPath}`);
     } catch (error) {
-      console.error(`❌ [Service] Directory deletion failed for ${dirPath}:`, error);
+      console.error(`[Service] Directory deletion failed for ${dirPath}:`, error);
       throw error;
     }
   }
 
   async backupUserFiles(userId: string): Promise<void> {
     try {
-      console.log(`🔄 [Service] Starting backup for user: ${userId}`);
+      console.log(`[Service] Starting backup for user: ${userId}`);
       
       const fileList = await this.dockerManager.listFiles(userId);
       const containerFiles = new Map<string, string>();
@@ -159,7 +159,7 @@ export class ContainerService {
         const fileType = parts[1];
         
         if (!fileName || !fileType) {
-          console.warn(`⚠️ [Service] Invalid file item format: ${fileItem}`);
+          console.warn(`[Service] Invalid file item format: ${fileItem}`);
           continue;
         }
         
@@ -168,36 +168,36 @@ export class ContainerService {
             const content = await this.dockerManager.readFileFromContainer(userId, fileName);
             containerFiles.set(fileName, content);
           } catch (error) {
-            console.warn(`⚠️ [Service] Could not read file ${fileName} for backup:`, error);
+            console.warn(`[Service] Could not read file ${fileName} for backup:`, error);
           }
         }
       }
       
       const savedCount = await this.cloudStorage.backupAllUserFiles(userId, containerFiles);
-      console.log(`✅ [Service] Backup completed: ${savedCount}/${containerFiles.size} files saved to cloud`);
+      console.log(`[Service] Backup completed: ${savedCount}/${containerFiles.size} files saved to cloud`);
       
     } catch (error) {
-      console.error(`❌ [Service] Backup failed for user ${userId}:`, error);
+      console.error(`[Service] Backup failed for user ${userId}:`, error);
     }
   }
 
   async deleteUserFile(userId: string, filePath: string): Promise<void> {
     try {
-      console.log(`🔄 [Service] Deleting file: ${userId}/${filePath}`);
+      console.log(`[Service] Deleting file: ${userId}/${filePath}`);
       
       await this.dockerManager.deletePath(userId, filePath);
-      console.log(`✅ [Service] File deleted from container: ${filePath}`);
+      console.log(`[Service] File deleted from container: ${filePath}`);
       
       const cloudDeleted = await this.cloudStorage.deleteFile(userId, filePath);
       if (cloudDeleted) {
-        console.log(`✅ [Service] File deleted from cloud: ${filePath}`);
+        console.log(`[Service] File deleted from cloud: ${filePath}`);
       } else {
-        console.warn(`⚠️ [Service] Cloud delete failed: ${filePath}`);
+        console.warn(`[Service] Cloud delete failed: ${filePath}`);
       }
       
-      console.log(`✅ [Service] File deletion completed: ${filePath}`);
+      console.log(`[Service] File deletion completed: ${filePath}`);
     } catch (error) {
-      console.error(`❌ [Service] File deletion failed for ${filePath}:`, error);
+      console.error(`[Service] File deletion failed for ${filePath}:`, error);
       throw error;
     }
   }
@@ -248,7 +248,7 @@ export class ContainerService {
     try {
       return await this.dockerManager.readFileFromContainer(userId, filePath);
     } catch (error) {
-      console.log(`📁 [Service] File not in container, trying cloud: ${filePath}`);
+      console.log(`[Service] File not in container, trying cloud: ${filePath}`);
       const content = await this.cloudStorage.loadFile(userId, filePath);
       if (content !== null) {
         return content;
@@ -258,11 +258,11 @@ export class ContainerService {
   }
 
   async cleanupUserSession(userId: string): Promise<void> {
-    console.log(`🔄 [Service] Cleaning up session for user: ${userId}`);
+    console.log(`[Service] Cleaning up session for user: ${userId}`);
     
     await this.backupUserFiles(userId);
     await this.dockerManager.cleanupContainer(userId);
     
-    console.log(`✅ [Service] Session cleanup completed for user: ${userId}`);
+    console.log(`[Service] Session cleanup completed for user: ${userId}`);
   }
 }

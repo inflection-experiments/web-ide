@@ -18,15 +18,12 @@
 
     let { children }: Props = $props();
 
-    // ✅ FIXED: Proper reactive state management
     let isAuthenticated = $derived($auth.isAuthenticated);
     let authLoading = $derived($auth.loading);
     let user = $derived($auth.user);
 
-    // ✅ ADD: Track theme changes for global dispatch
     let currentTheme = $derived(mode.current);
 
-    // Add minimum loading time state
     let minimumLoadingComplete = $state(false);
 
     let tree = $state<Record<string, any>>({});
@@ -39,19 +36,15 @@
     let saveInProgress = $state(false);
     let refreshInterval: ReturnType<typeof setInterval>;
 
-    // ✅ ADD: Global theme change dispatcher
     $effect(() => {
-        // Dispatch global theme change event whenever mode changes
         if (typeof window !== 'undefined') {
-            console.log('🎨 [GLOBAL] Theme changed to:', currentTheme);
+            console.log('[GLOBAL] Theme changed to:', currentTheme);
             
-            // Dispatch custom event that terminal can listen to
             const themeEvent = new CustomEvent('globalThemeChange', {
                 detail: { theme: currentTheme, isDark: currentTheme === 'dark' },
                 bubbles: true
             });
             
-            // Small delay to ensure DOM is ready
             setTimeout(() => {
                 window.dispatchEvent(themeEvent);
             }, 50);
@@ -73,11 +66,11 @@
         try {
             const token = localStorage.getItem('auth_token');
             if (!token) {
-                console.error('❌ No auth token for file tree request');
+                console.error('[ERROR] No auth token for file tree request');
                 return;
             }
 
-            console.log('📁 [DEBUG] Loading file tree with auth token...');
+            console.log('[DEBUG] Loading file tree with auth token...');
             const response = await fetch('http://localhost:9000/files', {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -91,9 +84,9 @@
             const data = await response.json();
             tree = data.tree || {};
             loading = false;
-            console.log('✅ [DEBUG] File tree loaded successfully');
+            console.log('[DEBUG] File tree loaded successfully');
         } catch (error) {
-            console.error('💥 Error loading file tree:', error);
+            console.error('[ERROR] Error loading file tree:', error);
             loading = false;
         }
     }
@@ -104,14 +97,14 @@
         try {
             const token = localStorage.getItem('auth_token');
             if (!token) {
-                console.error('❌ No auth token for file content request');
+                console.error('[ERROR] No auth token for file content request');
                 return;
             }
 
             const cleanPath = cleanFilePath(path);
             const params = new URLSearchParams({ path: cleanPath });
             
-            console.log(`📖 [DEBUG] Loading file content with auth token: ${cleanPath}`);
+            console.log(`[DEBUG] Loading file content with auth token: ${cleanPath}`);
             const response = await fetch(`http://localhost:9000/files/content?${params.toString()}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -136,9 +129,9 @@
             
             selectedFileContent = content;
             lastSavedContent = content;
-            console.log(`✅ [DEBUG] File content loaded successfully: ${cleanPath}`);
+            console.log(`[DEBUG] File content loaded successfully: ${cleanPath}`);
         } catch (error) {
-            console.error('💥 Failed to load file content:', error);
+            console.error('[ERROR] Failed to load file content:', error);
             selectedFileContent = '';
             lastSavedContent = '';
         }
@@ -161,7 +154,7 @@
         if (!cleanPath || saveInProgress || !content) return;
         
         if (content === lastSavedContent || content === selectedFileContent) {
-            console.log('🚫 Skipping identical content save');
+            console.log('[DEBUG] Skipping identical content save');
             return;
         }
         
@@ -171,15 +164,15 @@
             if (saveInProgress) return;
             
             saveInProgress = true;
-            console.log('💾 [SAVE] Executing:', { path: cleanPath, length: content.length });
+            console.log('[SAVE] Executing:', { path: cleanPath, length: content.length });
             
             try {
                 socket.emit("file:change", { path: cleanPath, content: content });
                 selectedFileContent = content;
                 lastSavedContent = content;
-                console.log('✅ [SAVE] Success');
+                console.log('[SAVE] Success');
             } catch (error) {
-                console.error('❌ [SAVE] Failed:', error);
+                console.error('[SAVE] Failed:', error);
             } finally {
                 setTimeout(() => { saveInProgress = false; }, 500);
             }
@@ -199,13 +192,13 @@
             auth.logout();
             window.location.reload();
         } catch (error) {
-            console.error('❌ Logout error:', error);
+            console.error('[ERROR] Logout error:', error);
             window.location.reload();
         }
     }
 
     onMount(() => {
-        console.log('🚀 === MAIN LAYOUT MOUNT START ===');
+        console.log('[DEBUG] === MAIN LAYOUT MOUNT START ===');
         
         setTimeout(() => {
             minimumLoadingComplete = true;
@@ -215,7 +208,7 @@
             try {
                 await auth.checkAuth();
             } catch (error) {
-                console.error('❌ Authentication check failed:', error);
+                console.error('[ERROR] Authentication check failed:', error);
             }
         }
         
@@ -225,7 +218,7 @@
         
         socket.on('connect', () => {
             if (!socketInitialized) {
-                console.log('🔌✅ Socket connected');
+                console.log('[DEBUG] Socket connected');
                 userId = socket.id ?? '';
                 localStorage.setItem('userId', userId);
                 loadFileTree();
@@ -234,15 +227,16 @@
                 if (refreshInterval) clearInterval(refreshInterval);
                 refreshInterval = setInterval(() => {
                     if (!saveInProgress && !authLoading && isAuthenticated) {
-                        console.log('🔄 [AUTO-REFRESH] Refreshing file tree...');
+                        console.log('[AUTO-REFRESH] Refreshing file tree...');
                         loadFileTree();
+                        // REMOVED: No ports panel refresh needed
                     }
                 }, 3000);
             }
         });
         
         socket.on('disconnect', () => {
-            console.log('🔌❌ Socket disconnected');
+            console.log('[DEBUG] Socket disconnected');
             socketInitialized = false;
             if (refreshInterval) clearInterval(refreshInterval);
         });
@@ -438,6 +432,8 @@
                         <Terminal />
                     </div>
                 </div>
+                
+                <!-- REMOVED: No ports panel anymore -->
                 
             </div>
         </div>
