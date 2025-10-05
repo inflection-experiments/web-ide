@@ -1,35 +1,27 @@
-version: '3.8'
-
 services:
   # Main Application (Backend + Frontend)
   app:
     build: .
     ports:
-      - "9000:9000"          # Backend API and Socket.IO - KEEP
-      - "5173:5173"          # Frontend dev server - KEEP
-      # ✅ REMOVE: - "6001:3000" (no longer needed)
-      # ✅ ADD: Dynamic port ranges for user containers
-      - "3001-3100:3001-3100"  # User container port range 1
-      - "4001-4100:4001-4100"  # User container port range 2
-      - "5001-5100:5001-5100"  # User container port range 3
-      - "8001-8100:8001-8100"  # User container port range 4
+      - "9000:9000"
+      - "5173:5173"
+      - "3001-3100:3001-3100"
+      - "4001-4100:4001-4100"
+      - "5001-5100:5001-5100"
+      - "8001-8100:8001-8100"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      # ✅ ONLY FIX: REMOVED SHARED VOLUME - NO MORE ./server/user:/app/user
-      # Users will get individual directories created dynamically
     environment:
-      - NODE_ENV=production
-      # Database Configuration
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=yourpassword
-      - DB_NAME=playground_db
-      - JWT_SECRET=your-super-secret-jwt-key
-      # MinIO Configuration
-      - MINIO_ENDPOINT=minio
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin123
+      - NODE_ENV=${NODE_ENV}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
     depends_on:
       - postgres
       - redis
@@ -46,11 +38,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=playground_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=yourpassword
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -74,13 +66,13 @@ services:
     container_name: minio_storage
     command: server /data --console-address ":9002"
     ports:
-      - "9001:9000"    # MinIO API
-      - "9002:9002"    # MinIO Console
+      - "9001:9000"
+      - "9002:9002"
     volumes:
       - minio_data:/data
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin123
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -102,37 +94,36 @@ services:
       /bin/sh -c "
       echo 'Waiting for MinIO to be ready...';
       sleep 15;
-      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin123;
+      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
       /usr/bin/mc mb myminio/user-files --ignore-existing;
       /usr/bin/mc policy set public myminio/user-files;
       echo 'MinIO bucket user-files created successfully';
       exit 0;
       "
 
-  # Frontend Development Server (Optional - for dev profile)
+  # Frontend Development Server
   frontend-dev:
     build:
       context: ./interface
       dockerfile: Dockerfile.dev
     ports:
-      - "5174:5173"    # Changed from 5174:5173 to avoid conflicts
+      - "5174:5173"
     volumes:
       - ./interface:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://localhost:9000
+      - PUBLIC_API_URL=${PUBLIC_API_URL}
+      - PUBLIC_SOCKET_URL=${PUBLIC_SOCKET_URL}
     networks:
       - playground_network
     profiles:
       - dev
 
-# Network Configuration
 networks:
   playground_network:
     driver: bridge
 
-# Volume Configuration
 volumes:
   postgres_data:
   redis_data:
