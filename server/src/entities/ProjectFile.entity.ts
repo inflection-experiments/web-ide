@@ -1,29 +1,28 @@
 import 'reflect-metadata';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { Project } from './Project.entity.js';
 
 @Entity('project_files')
 export class ProjectFile {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar' })  // ← FIXED: Explicit type
+  @Column({ type: 'varchar' })
   name: string;
 
-  @Column({ type: 'varchar' })  // ← FIXED: Explicit type
+  @Column({ type: 'varchar' })
   path: string;
 
-  @Column({ type: 'varchar', name: 'minio_key' })  // ← FIXED: Explicit type
+  @Column({ type: 'varchar', name: 'minio_key' })
   minioKey: string;
 
-  @Column({ type: 'varchar', name: 'file_type' })  // ← FIXED: Explicit type
+  @Column({ type: 'varchar', name: 'file_type' })
   fileType: string;
 
-  @Column({ type: 'bigint', default: 0 })  // ← FIXED: Explicit type
+  @Column({ type: 'bigint', default: 0 })
   size: number;
 
-  @ManyToOne(() => Project, project => project.files)
-  project: Project;
+  @ManyToOne("Project", (project: any) => project.files)
+  project: any;
 
   @CreateDateColumn()
   createdAt: Date;

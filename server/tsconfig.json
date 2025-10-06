@@ -14,16 +14,15 @@
     "exactOptionalPropertyTypes": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true,
+    "noEmit": false,
+    "outDir": "./dist",
+    "rootDir": "./",
     "moduleResolution": "NodeNext",
     
-    // REQUIRED FOR TYPEORM DECORATORS
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    
-    // PREVENTS PROPERTY INITIALIZATION ERRORS
     "strictPropertyInitialization": false
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }
