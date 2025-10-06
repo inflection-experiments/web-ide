@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { Project } from './Project.entity.js';
 
 @Entity('users')
 export class User {
@@ -19,8 +18,8 @@ export class User {
   @Column({ type: 'varchar', name: 'minio_bucket' })
   minioBucket: string;
 
-  @OneToMany(() => Project, project => project.user)
-  projects: Project[];
+  @OneToMany("Project", (project: any) => project.user)
+  projects: any[];
 
   @CreateDateColumn()
   createdAt: Date;

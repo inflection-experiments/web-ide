@@ -1,7 +1,5 @@
 import 'reflect-metadata';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from './User.entity.js';
-import { ProjectFile } from './ProjectFile.entity.js';
 
 @Entity('projects')
 export class Project {
@@ -20,11 +18,11 @@ export class Project {
   @Column({ type: 'varchar', default: 'active' })
   status: string;
 
-  @ManyToOne(() => User, user => user.projects)
-  user: User;
+  @ManyToOne("User", (user: any) => user.projects)
+  user: any;
 
-  @OneToMany(() => ProjectFile, file => file.project)
-  files: ProjectFile[];
+  @OneToMany("ProjectFile", (file: any) => file.project)
+  files: any[];
 
   @CreateDateColumn()
   createdAt: Date;
@@ -32,4 +30,3 @@ export class Project {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-    
