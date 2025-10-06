@@ -628,7 +628,7 @@ export class DockerManager {
   }
 
   async createDirectory(userId: string, path: string): Promise<void> {
-    console.log(`📁 [DEBUG] Creating directory for REAL user ${userId}: ${path}`);
+    console.log(` [DEBUG] Creating directory for REAL user ${userId}: ${path}`);
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     if (!container) throw new Error('Container not found');
 
@@ -745,7 +745,7 @@ export class DockerManager {
   }
 
   async cleanupContainer(userId: string): Promise<void> {
-    console.log(`🧹 [DEBUG] Cleaning up container for REAL user: ${userId}`);
+    console.log(` [DEBUG] Cleaning up container for REAL user: ${userId}`);
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     const shell = this.userShells.get(userId);
 
