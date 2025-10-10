@@ -159,57 +159,80 @@
             }, 100);
         }
 
+        // ✅ FIXED: Strip newlines from pasted content to prevent auto-execution
         term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
-            if (event.ctrlKey || event.metaKey) {
-            if (event.code === 'KeyC' && event.type === 'keydown' && term.hasSelection()) {
-                document.execCommand('copy');
-                return false;
-            }
+            const isCtrlOrCmd = event.ctrlKey || event.metaKey;
             
-            if (event.code === 'KeyV' && event.type === 'keydown') {
-                navigator.clipboard.readText().then(text => {
-                socket.emit("terminal:paste", text);
-                });
-                return false;
-            }
+            if (isCtrlOrCmd) {
+                // Handle Copy - allow selection copy
+                if (event.code === 'KeyC' && event.type === 'keydown' && term.hasSelection()) {
+                    document.execCommand('copy');
+                    return false;
+                }
+                
+                // Handle Paste - prevent native paste and strip newlines
+                if (event.code === 'KeyV' && event.type === 'keydown') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    navigator.clipboard.readText().then(text => {
+                        // ✅ KEY FIX: Remove all newline characters to prevent auto-execution
+                        const cleanText = text
+                            .replace(/\r\n/g, ' ')  // Replace Windows line endings
+                            .replace(/\n/g, ' ')    // Replace Unix line endings  
+                            .replace(/\r/g, ' ')    // Replace Mac line endings
+                            .trim();                // Remove leading/trailing whitespace
+                        
+                        console.log('📋 [PASTE] Original:', text.length, 'chars');
+                        console.log('📋 [PASTE] Cleaned:', cleanText);
+                        
+                        // Send cleaned text without newlines
+                        socket.emit('terminal:data', cleanText);
+                    }).catch(err => {
+                        console.error('Paste failed:', err);
+                    });
+                    
+                    return false;
+                }
             }
             
             return true;
         });
 
+        // Handle keyboard input normally
         term.onData((data: string) => {
             socket.emit('terminal:data', data);
         });
 
         function onTerminalData(data: string) {
             const clearSequences = [
-            '\u001b[2J',
-            '\u001b[H\u001b[2J',
-            '\u001b[3J',
-            '\x1Bc'
+                '\u001b[2J',
+                '\u001b[H\u001b[2J',
+                '\u001b[3J',
+                '\x1Bc'
             ];
             
             const hasClearSequence = clearSequences.some(seq => data.includes(seq));
             
             if (hasClearSequence) {
-            term.clear();
-            
-            let cleanData = data;
-            clearSequences.forEach(seq => {
-                cleanData = cleanData.replace(new RegExp(seq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
-            });
-            
-            if (cleanData) {
-                term.write(cleanData);
-            }
+                term.clear();
+                
+                let cleanData = data;
+                clearSequences.forEach(seq => {
+                    cleanData = cleanData.replace(new RegExp(seq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
+                });
+                
+                if (cleanData) {
+                    term.write(cleanData);
+                }
             } else {
-            term.write(data);
+                term.write(data);
             }
             
-            // ✅ IMPROVED: Better detection for different server messages
+            // Server port detection
             if (data.includes('running on port') || data.includes('listening on port') || data.includes('started on port') || 
                 data.includes('Server running') || data.includes('server running')) {
-                let detectedPort = 9000; // default
+                let detectedPort = 9000;
                 const portMatch = data.match(/port\s+(\d+)/i);
                 if (portMatch) {
                     detectedPort = parseInt(portMatch[1]);
