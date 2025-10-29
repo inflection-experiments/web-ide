@@ -1,7 +1,9 @@
 services:
   # Main Application (Backend + Frontend)
   app:
-    build: .
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     ports:
       - "9000:9000"
       - "5173:5173"
@@ -26,8 +28,6 @@ services:
       - postgres
       - redis
       - minio
-    networks:
-      - playground_network
   
   # PostgreSQL Database
   postgres:
@@ -46,8 +46,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - playground_network
 
   # Redis Cache
   redis:
@@ -57,8 +55,6 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - playground_network
 
   # MinIO Cloud Storage Service
   minio:
@@ -78,8 +74,6 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
-    networks:
-      - playground_network
 
   # Auto-create MinIO bucket
   createbucket:
@@ -88,8 +82,6 @@ services:
     depends_on:
       - minio
     restart: on-failure
-    networks:
-      - playground_network
     entrypoint: >
       /bin/sh -c "
       echo 'Waiting for MinIO to be ready...';
@@ -105,9 +97,10 @@ services:
   frontend-dev:
     build:
       context: ./interface
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
-      - "5174:5173"
+      # - "5174:5173"
+      - "3000:3000"
     volumes:
       - ./interface:/app
       - /app/node_modules
@@ -115,14 +108,6 @@ services:
       - NODE_ENV=development
       - PUBLIC_API_URL=${PUBLIC_API_URL}
       - PUBLIC_SOCKET_URL=${PUBLIC_SOCKET_URL}
-    networks:
-      - playground_network
-    profiles:
-      - dev
-
-networks:
-  playground_network:
-    driver: bridge
 
 volumes:
   postgres_data:
