@@ -20,6 +20,7 @@ AppDataSource.initialize()
   .then(() => {
     console.log('✅ [Database] Connected successfully');
   })
+  
   .catch((error) => {
     console.error(' [Database] Connection failed:', error);
     process.exit(1);

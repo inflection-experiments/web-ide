@@ -1,5 +1,8 @@
-// API Configuration - Point directly to your server
-export const API_BASE_URL = 'http://localhost:9000';
+// src/lib/config.ts
+import { env } from '$env/dynamic/public';
+
+// API Configuration using environment variables
+export const API_BASE_URL = env.PUBLIC_API_BASE_URL;
 
 export const API_ENDPOINTS = {
   AUTH: {
@@ -36,8 +39,8 @@ export const httpClient = {
     };
 
     const config: RequestInit = {
-      mode: 'cors', // Enable CORS
-      credentials: 'omit', // Don't send cookies
+      mode: 'cors',
+      credentials: 'omit',
       ...options,
       headers: {
         ...defaultHeaders,
