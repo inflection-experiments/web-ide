@@ -489,3 +489,4 @@
   class="w-full bg-white dark:bg-stone-900"
   style="height:calc(100% - {selectedFile ? '85px' : '0px'});"
 ></div>
+  
