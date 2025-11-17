@@ -25,7 +25,7 @@ export class DockerManager {
 
   // COMPLETE FIX: Extension fixing with all programming languages
   private fixIncompleteExtension(filePath: string): string {
-    console.log(`🔧 [DEBUG] Checking extension for: "${filePath}"`);
+    console.log(` [DEBUG] Checking extension for: "${filePath}"`);
     
     const extensionMap: { [key: string]: string } = {
       '.j': '.js',
@@ -179,9 +179,9 @@ export class DockerManager {
       const existingContainer = this.docker.getContainer(containerName);
       try {
         await existingContainer.stop();
-        console.log(`⏹ [DEBUG] Stopped existing container: ${containerName}`);
+        console.log(`[DEBUG] Stopped existing container: ${containerName}`);
       } catch (stopError) {
-        console.log(`⏹ [DEBUG] Container was not running: ${containerName}`);
+        console.log(`[DEBUG] Container was not running: ${containerName}`);
       }
       await existingContainer.remove({ force: true });
       console.log(` [DEBUG] Removed existing container: ${containerName}`);
@@ -289,7 +289,7 @@ export class DockerManager {
       }, 100);
 
     } catch (err) {
-      console.error(`❌ [ERROR] Shell creation failed for REAL user ${userId}:`, err);
+      console.error(` [ERROR] Shell creation failed for REAL user ${userId}:`, err);
     }
   }
 
@@ -311,15 +311,15 @@ export class DockerManager {
 
     // Fix extension
     const fixedPath = this.fixIncompleteExtension(filePath);
-    console.log(`🔧 [DEBUG] Fixed Path: ${fixedPath}`);
+    console.log(` [DEBUG] Fixed Path: ${fixedPath}`);
 
     // Ultra-clean content
     const cleanContent = this.ultraCleanContent(content, fixedPath);
-    console.log(`🔧 [DEBUG] Content cleaned: ${content.length} -> ${cleanContent.length}`);
+    console.log(` [DEBUG] Content cleaned: ${content.length} -> ${cleanContent.length}`);
 
     // Create clean buffer
     const contentBuffer = Buffer.from(cleanContent, 'utf8');
-    console.log(`🔧 [DEBUG] Buffer size: ${contentBuffer.length} bytes`);
+    console.log(` [DEBUG] Buffer size: ${contentBuffer.length} bytes`);
 
     // Create TAR with clean path
     const cleanFilePath = fixedPath.startsWith('/') ? fixedPath.slice(1) : fixedPath;
@@ -371,7 +371,7 @@ export class DockerManager {
   }
 
   async cleanupDuplicateFiles(userId: string): Promise<void> {
-    console.log(`🧹 [DEBUG] Cleaning duplicates for REAL user: ${userId}`);
+    console.log(` [DEBUG] Cleaning duplicates for REAL user: ${userId}`);
     
     const container: Docker.Container | undefined = this.userContainers.get(userId);
     if (!container) return;
@@ -417,7 +417,7 @@ export class DockerManager {
     let cleanPath: string = fixedPath.startsWith('/') ? fixedPath.slice(1) : fixedPath;
     cleanPath = cleanPath.replace(/[\x00-\x1f\x7f-\x9f]/g, '');
     
-    console.log(`📖[DEBUG] Clean path: ${cleanPath}`);
+    console.log(`[DEBUG] Clean path: ${cleanPath}`);
     
     const exec = await container.exec({
       Cmd: ['cat', `/workspace/${cleanPath}`],
