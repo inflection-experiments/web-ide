@@ -2,7 +2,9 @@
 FROM node:24.8-alpine3.21 AS builder
 WORKDIR /app
 
-RUN apk add --no-cache docker-cli
+RUN apk add --no-cache curl \
+    && curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.3.1.tgz | tar xzvf - --strip 1 -C /usr/local/bin docker/docker \
+    && apk del curl
 
 COPY package*.json ./
 RUN npm ci

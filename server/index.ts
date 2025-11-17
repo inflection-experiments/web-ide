@@ -121,7 +121,7 @@ function ultraCleanContent(content: string, filePath: string = ''): string {
 
 
 function fixIncompleteExtension(filePath: string): string {
-  console.log(`🔧 [DEBUG] Checking extension for: "${filePath}"`);
+  console.log(` [DEBUG] Checking extension for: "${filePath}"`);
   
   const extensionMap: { [key: string]: string } = {
     '.j': '.js',
@@ -156,7 +156,7 @@ function fixIncompleteExtension(filePath: string): string {
   }
 
 
-  console.log(`🔧 [DEBUG] NO EXTENSION FIX NEEDED: "${filePath}"`);
+  console.log(` [DEBUG] NO EXTENSION FIX NEEDED: "${filePath}"`);
   return filePath;
 }
 
@@ -167,7 +167,7 @@ function fixIncompleteExtension(filePath: string): string {
 
 
 app.get('/api/test', (req, res) => {
-  console.log('🧪 [API] Test endpoint accessed');
+  console.log(' [API] Test endpoint accessed');
   res.json({ 
     message: 'Server is working!', 
     timestamp: new Date().toISOString(),
@@ -365,7 +365,7 @@ io.on('connection', async (socket) => {
 
 
   // ✅ FIXED: Create container with REAL user ID
-  console.log(`🐳 [DEBUG] Creating user session for REAL user: ${realUserId}`);
+  console.log(` [DEBUG] Creating user session for REAL user: ${realUserId}`);
   containerService.createUserSession(realUserId)
     .then(() => {
       containerReady = true;
@@ -486,7 +486,7 @@ io.on('connection', async (socket) => {
       socket.emit('file:saved', { path: fixedPath, success: true });
       socket.emit('file:refresh');
       
-      console.log(`💾 [DEBUG] =================== MANUAL SAVE SUCCESS ===================\n`);
+      console.log(` [DEBUG] =================== MANUAL SAVE SUCCESS ===================\n`);
       
     } catch (error) {
       console.error(`\n [ERROR] =================== MANUAL SAVE FAILED ===================`);
@@ -595,7 +595,7 @@ app.get('/files', async (req, res) => {
   }
   
   try {
-    console.log(`📁 [DEBUG] Loading files for REAL user: ${realUserId}`);
+    console.log(` [DEBUG] Loading files for REAL user: ${realUserId}`);
     await containerService.dockerManager.cleanupDuplicateFiles(realUserId);
     
     const items: string[] = await containerService.getFiles(realUserId);
@@ -712,7 +712,7 @@ app.post('/files/create', async (req, res) => {
       console.log(' [DEBUG] File created successfully');
     } else if (requestType === 'directory') {
       console.log(` [DEBUG] Creating DIRECTORY: ${fullPath}`);
-      console.log(` [DEBUG] 🚀 CALLING containerService.createDirectory("${userId}", "${fullPath}")`);
+      console.log(` [DEBUG]  CALLING containerService.createDirectory("${userId}", "${fullPath}")`);
       
       await containerService.createDirectory(userId, fullPath);
       
@@ -761,7 +761,7 @@ app.post('/files/rename', async (req, res) => {
     const userId: string | undefined = socketUserMap.get(socketId);
     if (!userId) return res.status(400).json({ error: 'User session not found' });
     
-    console.log(`🔄 [DEBUG] Renaming for REAL user: ${userId}`);
+    console.log(` [DEBUG] Renaming for REAL user: ${userId}`);
     await containerService.dockerManager.renamePath(userId, oldPath, newPath);
     res.json({ success: true });
   } catch (error: unknown) {
@@ -832,7 +832,7 @@ app.get('/api/user/ports', async (req, res) => {
     const decoded = authService.verifyToken(token);
     const realUserId = decoded.userId.toString();
     
-    console.log(`🔍 [PORT] Getting port mappings for user: ${realUserId}`);
+    console.log(` [PORT] Getting port mappings for user: ${realUserId}`);
     
     // Get container and inspect port mappings
     const container = containerService.dockerManager.getContainer(realUserId);
@@ -979,7 +979,7 @@ containerService.initialize().then(async () => {
     console.log(' [Server] Database integration complete');
     console.log(' [Server] Socket.IO using REAL USER ID authentication');
     console.log(' [Server] Dynamic port allocation enabled');
-    console.log('🔌 [Socket.IO] Available at ws://localhost:9000/socket.io/');
+    console.log(' [Socket.IO] Available at ws://localhost:9000/socket.io/');
     console.log(' [Health] Check at http://localhost:9000/health');
     console.log(' [Test] API test at http://localhost:9000/api/test');
     console.log(' [Auth] Register at POST http://localhost:9000/api/auth/register');

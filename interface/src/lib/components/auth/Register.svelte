@@ -302,7 +302,7 @@
               {#if confirmPassword && !passwordsMatch}
                 <p class="text-xs text-red-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Passwords do not match</p>
               {:else if confirmPassword && passwordsMatch}
-                <p class="text-xs text-green-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Passwords match ✓</p>
+                <p class="text-xs text-green-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Passwords match </p>
               {/if}
             </div>
 

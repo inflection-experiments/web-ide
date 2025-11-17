@@ -1,4 +1,5 @@
 #!/bin/sh
-
-aws s3 cp s3://$S3_CONFIG_BUCKET/$S3_CONFIG_PATH/.env .env
-pm2-runtime dist/index.js --name web-ide-backend
+set -e
+echo "Starting Web IDE Application..."
+sleep 5
+exec pm2-runtime start dist/index.js --name web-ide-app

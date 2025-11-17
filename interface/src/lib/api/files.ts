@@ -40,7 +40,7 @@ export class FilesAPI {
     const socketId = socket.id || userId;
     
     if (!socketId) {
-      console.warn('⚠️ FilesAPI: No socket connection - files may not persist');
+      console.warn(' FilesAPI: No socket connection - files may not persist');
     }
     
     const params = socketId ? `?userId=${encodeURIComponent(socketId)}` : '';
@@ -55,7 +55,7 @@ export class FilesAPI {
     const socketId = socket.id || userId;
     
     if (!socketId) {
-      console.warn('⚠️ FilesAPI: No socket connection - files may not persist');
+      console.warn(' FilesAPI: No socket connection - files may not persist');
     }
     
     const params = new URLSearchParams({
@@ -69,10 +69,10 @@ export class FilesAPI {
    * ✅ FIXED: Save file using socket with real user authentication for persistence
    */
   static saveFile(path: string, content: string): void {
-    console.log('💾 FilesAPI: Saving file with authenticated user for persistence:', path);
+    console.log(' FilesAPI: Saving file with authenticated user for persistence:', path);
     
     if (!socket.connected) {
-      console.error('❌ FilesAPI: Socket not connected - file may not persist across logins');
+      console.error('FilesAPI: Socket not connected - file may not persist across logins');
       return;
     }
 
@@ -89,13 +89,13 @@ export class FilesAPI {
     content: string = '',
     parentPath: string = ''
   ): Promise<CreateFileResponse> {
-    console.log('📁 FilesAPI: Creating', type, 'with authenticated user:', path);
+    console.log(' FilesAPI: Creating', type, 'with authenticated user:', path);
 
     // ✅ USE SOCKET ID FOR AUTHENTICATED USER IDENTIFICATION
     const socketId = socket.id;
     
     if (!socketId) {
-      console.error('❌ FilesAPI: Socket not connected - creation may fail');
+      console.error(' FilesAPI: Socket not connected - creation may fail');
       throw new Error('Socket not connected - please refresh the page');
     }
 

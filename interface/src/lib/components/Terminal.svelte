@@ -85,7 +85,7 @@
             const isDark = document.documentElement.classList.contains('dark');
             const newTheme = isDark ? darkTheme : lightTheme;
             
-            console.log('🎨 [TERMINAL] Updating theme to:', isDark ? 'DARK' : 'LIGHT');
+            console.log(' [TERMINAL] Updating theme to:', isDark ? 'DARK' : 'LIGHT');
             
             term.options.theme = newTheme;
             term.refresh(0, term.rows - 1);
@@ -98,9 +98,9 @@
         const activePort = portMappings.find(port => port.containerPort === serverPort);
         
         if (activePort) {
-            term.write('\r\n🎉 \x1b[32mServer URL:\x1b[0m\r\n');
+            term.write('\r\n \x1b[32mServer URL:\x1b[0m\r\n');
             const url = `http://localhost:${activePort.hostPort}`;
-            term.write(`📡 Code accessible on this port → \x1b[34;4m${url}\x1b[0m\r\n\r\n`);
+            term.write(` Code accessible on this port \x1b[34;4m${url}\x1b[0m\r\n\r\n`);
         }
     }
 
@@ -109,7 +109,7 @@
         isRendered = true;
 
         function handleGlobalThemeChange(event: CustomEvent) {
-            console.log('🎨 [TERMINAL] Global theme change received:', event.detail);
+            console.log(' [TERMINAL] Global theme change received:', event.detail);
             setTimeout(() => {
                 updateTerminalTheme();
             }, 100);
@@ -183,8 +183,8 @@
                             .replace(/\r/g, ' ')    // Replace Mac line endings
                             .trim();                // Remove leading/trailing whitespace
                         
-                        console.log('📋 [PASTE] Original:', text.length, 'chars');
-                        console.log('📋 [PASTE] Cleaned:', cleanText);
+                        console.log(' [PASTE] Original:', text.length, 'chars');
+                        console.log(' [PASTE] Cleaned:', cleanText);
                         
                         // Send cleaned text without newlines
                         socket.emit('terminal:data', cleanText);
