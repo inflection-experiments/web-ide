@@ -18,7 +18,7 @@ import Docker from 'dockerode';
 console.log(' [Server] Initializing database connection...');
 AppDataSource.initialize()
   .then(() => {
-    console.log('✅ [Database] Connected successfully');
+    console.log('[Database] Connected successfully');
   })
   
   .catch((error) => {

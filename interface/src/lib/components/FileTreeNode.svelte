@@ -1,5 +1,8 @@
 <script lang="ts">
   import { FolderOpen, Folder, File, ChevronRight } from 'lucide-svelte';
+  import { PUBLIC_API_BASE_URL } from '$env/static/public';
+
+  console.log('[DEBUG] [ENV] API_BASE_URL loaded:', PUBLIC_API_BASE_URL);
 
   let { tree, onSelect, currentPath = '' } = $props<{
     tree: Record<string, any>;
@@ -21,6 +24,7 @@
   let oldItemName = $state('');
   let contextMenuType = $state<'file' | 'directory' | 'empty'>('empty');
 
+
   async function loadDirectoryContents(dirName: string, fullPath: string): Promise<void> {
     const userId: string | null = localStorage.getItem('userId');
     if (!userId) {
@@ -34,8 +38,9 @@
     loadingDirs = new Set(loadingDirs);
     
     try {
-      const url: string = `http://localhost:9000/files/directory?userId=${encodeURIComponent(userId)}&path=${encodeURIComponent(fullPath)}`;
+      const url: string = `${PUBLIC_API_BASE_URL}/files/directory?userId=${encodeURIComponent(userId)}&path=${encodeURIComponent(fullPath)}`;
       console.log('[DEBUG] Request URL:', url);
+      console.log('[DEBUG] [ENV CHECK] Using API_BASE_URL:', PUBLIC_API_BASE_URL);
       
       const response: Response = await fetch(url);
       
@@ -70,6 +75,7 @@
     }
   }
 
+
   async function forceRefreshAllExpandedDirs(): Promise<void> {
     console.log('[DEBUG] FORCE REFRESHING ALL EXPANDED DIRECTORIES');
     console.log('  - expandedDirs:', Array.from(expandedDirs));
@@ -84,6 +90,7 @@
       await loadDirectoryContents(dirName, fullPath);
     }
   }
+
 
   async function handleFileClick(name: string, isDir: boolean, fullPath: string): Promise<void> {
     console.log('[DEBUG] File click:', { name, isDir, fullPath });
@@ -106,6 +113,7 @@
     }
   }
 
+
   function handleContextMenu(e: MouseEvent, name: string, fullPath: string, isDir: boolean): void {
     e.preventDefault();
     e.stopPropagation();
@@ -125,6 +133,7 @@
     console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
     console.log('  - contextMenuType:', contextMenuType);
   }
+
 
   function handleEmptySpaceContextMenu(e: MouseEvent): void {
     if (e.target !== e.currentTarget) {
@@ -148,6 +157,7 @@
     console.log('  - contextMenuType:', contextMenuType);
   }
 
+
   function createNewItem(type: 'file' | 'directory'): void {
     console.log('[DEBUG] CREATE NEW ITEM TRIGGERED:');
     console.log('  - type:', type);
@@ -159,6 +169,7 @@
     showCreateDialog = true;
     showContextMenu = false;
   }
+
 
   function renameItem(): void {
     console.log('[DEBUG] RENAME ITEM TRIGGERED:');
@@ -173,6 +184,7 @@
     showRenameDialog = true;
     showContextMenu = false;
   }
+
 
   async function handleCreate(): Promise<void> {
     console.log('[DEBUG] HANDLE CREATE FUNCTION CALLED:');
@@ -229,8 +241,9 @@
       
       console.log('[DEBUG] CREATE REQUEST PAYLOAD:');
       console.log(JSON.stringify(requestPayload, null, 2));
+      console.log('[DEBUG] [ENV CHECK] Using API_BASE_URL for create:', PUBLIC_API_BASE_URL);
       
-      const response: Response = await fetch('http://localhost:9000/files/create', {
+      const response: Response = await fetch(`${PUBLIC_API_BASE_URL}/files/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload)
@@ -263,6 +276,7 @@
       alert('Network error occurred.');
     }
   }
+
 
   async function handleRename(): Promise<void> {
     console.log('[DEBUG] === HANDLE RENAME STARTED ===');
@@ -301,8 +315,9 @@
       
       console.log('[DEBUG] RENAME REQUEST PAYLOAD:');
       console.log(JSON.stringify(renamePayload, null, 2));
+      console.log('[DEBUG] [ENV CHECK] Using API_BASE_URL for rename:', PUBLIC_API_BASE_URL);
       
-      const response: Response = await fetch('http://localhost:9000/files/rename', {
+      const response: Response = await fetch(`${PUBLIC_API_BASE_URL}/files/rename`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(renamePayload)
@@ -334,6 +349,7 @@
     console.log('[DEBUG] === HANDLE RENAME COMPLETED ===');
   }
 
+
   async function handleDelete(): Promise<void> {
     const itemName: string = contextMenuPath.split('/').pop() || contextMenuPath;
     
@@ -356,8 +372,9 @@
       
       console.log('[DEBUG] Delete UserId:', userId);
       
-      const deleteUrl = `http://localhost:9000/files/delete?userId=${userId}&path=${encodeURIComponent(contextMenuPath)}`;
+      const deleteUrl = `${PUBLIC_API_BASE_URL}/files/delete?userId=${userId}&path=${encodeURIComponent(contextMenuPath)}`;
       console.log('[DEBUG] DELETE URL:', deleteUrl);
+      console.log('[DEBUG] [ENV CHECK] Using API_BASE_URL for delete:', PUBLIC_API_BASE_URL);
       
       const response: Response = await fetch(deleteUrl, {
         method: 'DELETE'
@@ -389,6 +406,7 @@
     console.log('[DEBUG] === HANDLE DELETE COMPLETED ===');
   }
 
+
   $effect(() => {
     const handleClick = (): void => {
       if (showContextMenu) {
@@ -399,6 +417,7 @@
     return () => document.removeEventListener('click', handleClick);
   });
 </script>
+
 
 <div class="min-h-full w-full bg-transparent p-2" on:contextmenu={handleEmptySpaceContextMenu}>
   {#each Object.entries(tree) as [name, value]}
@@ -494,6 +513,7 @@
     {/if}
   {/each}
 
+
   <!-- Context Menu -->
   {#if showContextMenu}
     <div 
@@ -521,6 +541,7 @@
       {/if}
     </div>
   {/if}
+
 
   <!-- Create Dialog -->
   {#if showCreateDialog}
@@ -560,6 +581,7 @@
       </div>
     </div>
   {/if}
+
 
   <!-- Rename Dialog -->
   {#if showRenameDialog}

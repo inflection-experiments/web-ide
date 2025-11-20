@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Snippet } from 'svelte';
     import { onMount } from 'svelte';
+    import { PUBLIC_API_BASE_URL, PUBLIC_SOCKET_URL } from '$env/static/public';
     import socket from '$lib/socket';
     import Terminal from '$lib/components/Terminal.svelte';
     import FileTree from '$lib/components/FileTreeNode.svelte';
@@ -12,20 +13,43 @@
     import { mode } from 'mode-watcher';
     import "../app.css";
 
+    // ============ DEBUG LOGGER ============
+    const DEBUG_PREFIX = '[LAYOUT]';
+    const log = {
+        info: (...args: any[]) => console.log(`${DEBUG_PREFIX} [INFO]`, ...args),
+        error: (...args: any[]) => console.error(`${DEBUG_PREFIX} [ERROR]`, ...args),
+        debug: (...args: any[]) => console.log(`${DEBUG_PREFIX} [DEBUG]`, ...args),
+        warn: (...args: any[]) => console.warn(`${DEBUG_PREFIX} [WARN]`, ...args),
+        success: (...args: any[]) => console.log(`${DEBUG_PREFIX} [SUCCESS]`, ...args),
+    };
+
+    // ============ CONFIGURATION ============
+    const CONFIG = {
+        API_BASE_URL: PUBLIC_API_BASE_URL,
+        SOCKET_URL: PUBLIC_SOCKET_URL,
+        AUTO_REFRESH_INTERVAL: 3000,
+        SAVE_DEBOUNCE_DELAY: 1000,
+        MIN_LOADING_TIME: 2500,
+        FILE_REFRESH_DELAY: 500,
+        SAVE_LOCK_DURATION: 500,
+    };
+
+    log.info('Configuration loaded:', CONFIG);
+
     interface Props {
         children: Snippet;
     }
 
     let { children }: Props = $props();
 
+    // ============ REACTIVE STATE ============
     let isAuthenticated = $derived($auth.isAuthenticated);
     let authLoading = $derived($auth.loading);
     let user = $derived($auth.user);
-
     let currentTheme = $derived(mode.current);
 
+    // ============ COMPONENT STATE ============
     let minimumLoadingComplete = $state(false);
-
     let tree = $state<Record<string, any>>({});
     let loading = $state(true);
     let selectedFile = $state('');
@@ -36,9 +60,10 @@
     let saveInProgress = $state(false);
     let refreshInterval: ReturnType<typeof setInterval>;
 
+    // ============ THEME EFFECT ============
     $effect(() => {
         if (typeof window !== 'undefined') {
-            console.log('[GLOBAL] Theme changed to:', currentTheme);
+            log.debug('Theme changed to:', currentTheme);
             
             const themeEvent = new CustomEvent('globalThemeChange', {
                 detail: { theme: currentTheme, isDark: currentTheme === 'dark' },
@@ -47,31 +72,48 @@
             
             setTimeout(() => {
                 window.dispatchEvent(themeEvent);
+                log.success('Theme event dispatched');
             }, 50);
         }
     });
 
+    // ============ UTILITY FUNCTIONS ============
     function cleanFilePath(path: string): string {
-        if (!path) return '';
+        if (!path) {
+            log.warn('cleanFilePath: Empty path provided');
+            return '';
+        }
+        
         let cleanPath = String(path);
+        const originalPath = cleanPath;
+        
         cleanPath = cleanPath.replace(/[\x00-\x1f\x7f-\x9f]/g, '');
         cleanPath = cleanPath.replace(/^['"\s]+|['"\s]+$/g, '');
         cleanPath = cleanPath.replace(/^workspace\//, '');
         cleanPath = cleanPath.replace(/^\.\//g, '');
         cleanPath = cleanPath.replace(/^\/+/, '');
+        
+        if (originalPath !== cleanPath) {
+            log.debug('Path cleaned:', { original: originalPath, cleaned: cleanPath });
+        }
+        
         return cleanPath;
     }
 
+    // ============ FILE TREE OPERATIONS ============
     async function loadFileTree(): Promise<void> {
+        const startTime = performance.now();
+        log.info('Loading file tree...');
+        
         try {
             const token = localStorage.getItem('auth_token');
             if (!token) {
-                console.error('[ERROR] No auth token for file tree request');
+                log.error('No auth token available for file tree request');
                 return;
             }
 
-            console.log('[DEBUG] Loading file tree with auth token...');
-            const response = await fetch('http://localhost:9000/files', {
+            log.debug('Fetching file tree from:', `${CONFIG.API_BASE_URL}/files`);
+            const response = await fetch(`${CONFIG.API_BASE_URL}/files`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -84,28 +126,39 @@
             const data = await response.json();
             tree = data.tree || {};
             loading = false;
-            console.log('[DEBUG] File tree loaded successfully');
+            
+            const duration = (performance.now() - startTime).toFixed(2);
+            log.success(`File tree loaded in ${duration}ms`);
+            log.debug('Tree loaded with keys:', Object.keys(tree));
         } catch (error) {
-            console.error('[ERROR] Error loading file tree:', error);
+            log.error('Failed to load file tree:', error);
             loading = false;
         }
     }
 
+    // ============ FILE CONTENT OPERATIONS ============
     async function loadFileContent(path: string): Promise<void> {
-        if (!path) return;
+        if (!path) {
+            log.warn('loadFileContent: No path provided');
+            return;
+        }
+        
+        const startTime = performance.now();
+        log.info('Loading file content for:', path);
         
         try {
             const token = localStorage.getItem('auth_token');
             if (!token) {
-                console.error('[ERROR] No auth token for file content request');
+                log.error('No auth token available for file content request');
                 return;
             }
 
             const cleanPath = cleanFilePath(path);
             const params = new URLSearchParams({ path: cleanPath });
+            const url = `${CONFIG.API_BASE_URL}/files/content?${params.toString()}`;
             
-            console.log(`[DEBUG] Loading file content with auth token: ${cleanPath}`);
-            const response = await fetch(`http://localhost:9000/files/content?${params.toString()}`, {
+            log.debug('Fetching file content from:', url);
+            const response = await fetch(url, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }  
@@ -118,149 +171,251 @@
             const data = await response.json();
             let content = data.content || '';
             
+            // Format JSON files
             if (cleanPath.endsWith('.json') && content.trim()) {
                 try {
                     const parsed = JSON.parse(content);
                     content = JSON.stringify(parsed, null, 2);
+                    log.debug('JSON file formatted');
                 } catch (jsonError) {
-                    // Use raw content if JSON parsing fails
+                    log.warn('Failed to format JSON, using raw content:', jsonError);
                 }
             }
             
             selectedFileContent = content;
             lastSavedContent = content;
-            console.log(`[DEBUG] File content loaded successfully: ${cleanPath}`);
+            
+            const duration = (performance.now() - startTime).toFixed(2);
+            log.success(`File content loaded in ${duration}ms (${content.length} bytes)`);
         } catch (error) {
-            console.error('[ERROR] Failed to load file content:', error);
+            log.error('Failed to load file content:', error);
             selectedFileContent = '';
             lastSavedContent = '';
         }
     }
 
+    // ============ FILE SELECTION HANDLER ============
     function handleFileSelect(path: string): void {
         const cleanPath = cleanFilePath(path);
-        if (!cleanPath) return;
-        
-        saveInProgress = false;
-        if (saveTimeout) clearTimeout(saveTimeout);
-        selectedFileContent = '';
-        lastSavedContent = '';
-        selectedFile = cleanPath;
-        loadFileContent(cleanPath);
-    }
-
-    function handleContentSave(path: string, content: string): void {
-        const cleanPath = cleanFilePath(path);
-        if (!cleanPath || saveInProgress || !content) return;
-        
-        if (content === lastSavedContent || content === selectedFileContent) {
-            console.log('[DEBUG] Skipping identical content save');
+        if (!cleanPath) {
+            log.warn('handleFileSelect: Invalid path after cleaning');
             return;
         }
         
-        if (saveTimeout) clearTimeout(saveTimeout);
+        log.info('File selected:', cleanPath);
+        
+        // Reset state
+        saveInProgress = false;
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+            log.debug('Cleared pending save timeout');
+        }
+        
+        selectedFileContent = '';
+        lastSavedContent = '';
+        selectedFile = cleanPath;
+        
+        loadFileContent(cleanPath);
+    }
+
+    // ============ CONTENT SAVE HANDLER ============
+    function handleContentSave(path: string, content: string): void {
+        const cleanPath = cleanFilePath(path);
+        
+        if (!cleanPath) {
+            log.warn('handleContentSave: Invalid path');
+            return;
+        }
+        
+        if (saveInProgress) {
+            log.warn('Save already in progress, skipping');
+            return;
+        }
+        
+        if (!content) {
+            log.warn('handleContentSave: Empty content, skipping');
+            return;
+        }
+        
+        if (content === lastSavedContent || content === selectedFileContent) {
+            log.debug('Content unchanged, skipping save');
+            return;
+        }
+        
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+            log.debug('Debouncing save...');
+        }
         
         saveTimeout = setTimeout(() => {
-            if (saveInProgress) return;
+            if (saveInProgress) {
+                log.warn('Save lock still active, aborting');
+                return;
+            }
             
             saveInProgress = true;
-            console.log('[SAVE] Executing:', { path: cleanPath, length: content.length });
+            log.info('Executing save:', {
+                path: cleanPath,
+                contentLength: content.length,
+                previousLength: lastSavedContent.length,
+            });
             
             try {
                 socket.emit("file:change", { path: cleanPath, content: content });
                 selectedFileContent = content;
                 lastSavedContent = content;
-                console.log('[SAVE] Success');
+                log.success('File saved successfully');
             } catch (error) {
-                console.error('[SAVE] Failed:', error);
+                log.error('Save failed:', error);
             } finally {
-                setTimeout(() => { saveInProgress = false; }, 500);
+                setTimeout(() => {
+                    saveInProgress = false;
+                    log.debug('Save lock released');
+                }, CONFIG.SAVE_LOCK_DURATION);
             }
-        }, 1000);
+        }, CONFIG.SAVE_DEBOUNCE_DELAY);
     }
 
+    // ============ LOGOUT HANDLER ============
     async function handleLogout() {
+        log.info('Logout initiated');
+        
         try {
-            if (saveTimeout) clearTimeout(saveTimeout);
-            if (refreshInterval) clearInterval(refreshInterval);
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+                log.debug('Cleared save timeout');
+            }
+            
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                log.debug('Cleared refresh interval');
+            }
+            
             saveInProgress = false;
             
             if (socket.connected) {
                 socket.disconnect();
+                log.debug('Socket disconnected');
             }
             
             auth.logout();
+            log.success('Logout successful, reloading page...');
             window.location.reload();
         } catch (error) {
-            console.error('[ERROR] Logout error:', error);
+            log.error('Logout error:', error);
             window.location.reload();
         }
     }
 
+    // ============ COMPONENT LIFECYCLE ============
     onMount(() => {
-        console.log('[DEBUG] === MAIN LAYOUT MOUNT START ===');
+        log.info('=== LAYOUT COMPONENT MOUNTED ===');
+        log.debug('Socket URL:', CONFIG.SOCKET_URL);
+        log.debug('API Base URL:', CONFIG.API_BASE_URL);
         
+        // Minimum loading screen duration
         setTimeout(() => {
             minimumLoadingComplete = true;
-        }, 2500);
+            log.debug('Minimum loading complete');
+        }, CONFIG.MIN_LOADING_TIME);
         
+        // Initialize authentication
         async function initializeAuth() {
+            log.info('Initializing authentication...');
             try {
                 await auth.checkAuth();
+                log.success('Authentication check complete');
             } catch (error) {
-                console.error('[ERROR] Authentication check failed:', error);
+                log.error('Authentication check failed:', error);
             }
         }
         
         initializeAuth();
         
+        // Socket connection management
         let socketInitialized = false;
         
         socket.on('connect', () => {
             if (!socketInitialized) {
-                console.log('[DEBUG] Socket connected');
+                log.success('Socket connected');
                 userId = socket.id ?? '';
                 localStorage.setItem('userId', userId);
+                log.debug('User ID:', userId);
+                
                 loadFileTree();
                 socketInitialized = true;
                 
+                // Setup auto-refresh
                 if (refreshInterval) clearInterval(refreshInterval);
                 refreshInterval = setInterval(() => {
                     if (!saveInProgress && !authLoading && isAuthenticated) {
-                        console.log('[AUTO-REFRESH] Refreshing file tree...');
+                        log.info('Auto-refresh: Refreshing file tree...');
                         loadFileTree();
-                        // REMOVED: No ports panel refresh needed
+                    } else {
+                        log.debug('Auto-refresh: Skipped (save in progress or not authenticated)');
                     }
-                }, 3000);
+                }, CONFIG.AUTO_REFRESH_INTERVAL);
+                
+                log.debug(`Auto-refresh enabled (every ${CONFIG.AUTO_REFRESH_INTERVAL}ms)`);
             }
         });
         
         socket.on('disconnect', () => {
-            console.log('[DEBUG] Socket disconnected');
+            log.warn('Socket disconnected');
             socketInitialized = false;
-            if (refreshInterval) clearInterval(refreshInterval);
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                log.debug('Auto-refresh disabled');
+            }
         });
         
         socket.on('file:refresh', () => {
+            log.info('File refresh event received');
             setTimeout(() => {
-                if (!saveInProgress) loadFileTree();
-            }, 500);
+                if (!saveInProgress) {
+                    loadFileTree();
+                } else {
+                    log.debug('File refresh skipped (save in progress)');
+                }
+            }, CONFIG.FILE_REFRESH_DELAY);
         });
         
+        // Custom refresh event handler
         const handleRefreshEvent = () => {
-            if (!saveInProgress) loadFileTree();
+            log.info('Manual refresh event received');
+            if (!saveInProgress) {
+                loadFileTree();
+            } else {
+                log.debug('Manual refresh skipped (save in progress)');
+            }
         };
         
         window.addEventListener('refreshFileTree', handleRefreshEvent);
+        log.debug('Event listeners registered');
         
+        // Cleanup
         return () => {
-            if (saveTimeout) clearTimeout(saveTimeout);
-            if (refreshInterval) clearInterval(refreshInterval);
+            log.info('Cleaning up layout component...');
+            
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+                log.debug('Cleared save timeout');
+            }
+            
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                log.debug('Cleared refresh interval');
+            }
+            
             saveInProgress = false;
+            
             socket.off('file:refresh');
             socket.off('connect');
             socket.off('disconnect');
+            
             window.removeEventListener('refreshFileTree', handleRefreshEvent);
+            log.debug('Event listeners removed');
+            log.success('Layout component cleanup complete');
         };
     });
 </script>
@@ -432,8 +587,6 @@
                         <Terminal />
                     </div>
                 </div>
-                
-                <!-- REMOVED: No ports panel anymore -->
                 
             </div>
         </div>
