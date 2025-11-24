@@ -13,9 +13,8 @@
     let term: any = null;
     let terminalReady = false;
 
-
-    let portMappings: Array<{containerPort: number, hostPort: number, status: string}> = $state([]);
-
+    // ✅ FIXED: Changed from $state([]) to plain array for Svelte 4
+    let portMappings: Array<{containerPort: number, hostPort: number, status: string}> = [];
 
     async function fetchUserPorts() {
         console.log('[DEBUG] [TERMINAL] Fetching user ports...');
@@ -45,7 +44,6 @@
         }
     }
 
-
     const lightTheme = {
         background: '#ffffff',
         foreground: '#000000',
@@ -70,7 +68,6 @@
         brightCyan: '#34e2e2',
         brightWhite: '#eeeeec'
     };
-
 
     const darkTheme = {
         background: '#000000',
@@ -97,7 +94,6 @@
         brightWhite: '#ffffff'
     };
 
-
     function updateTerminalTheme() {
         console.log('[DEBUG] [TERMINAL] updateTerminalTheme called, term ready:', terminalReady);
         if (term && terminalReady) {
@@ -113,7 +109,6 @@
         }
     }
 
-
     function showOnlyActivePort(serverPort: number) {
         console.log('[DEBUG] [TERMINAL] showOnlyActivePort called with port:', serverPort);
         const activePort = portMappings.find(port => port.containerPort === serverPort);
@@ -128,7 +123,6 @@
         }
     }
 
-
     onMount(() => {
         console.log('[DEBUG] [TERMINAL] onMount called');
         if (!browser || isRendered) {
@@ -137,7 +131,6 @@
         }
         isRendered = true;
 
-
         function handleGlobalThemeChange(event: CustomEvent) {
             console.log('[DEBUG] [TERMINAL] Global theme change received:', event.detail);
             setTimeout(() => {
@@ -145,209 +138,188 @@
             }, 100);
         }
 
-
         window.addEventListener('globalThemeChange', handleGlobalThemeChange as EventListener);
 
-
         Promise.all([
-        import('@xterm/xterm'),
-        import('@xterm/addon-fit'),
-        import('@xterm/addon-web-links')
+            import('@xterm/xterm'),
+            import('@xterm/addon-fit'),
+            import('@xterm/addon-web-links')
         ]).then(([{ Terminal: XTerminal }, { FitAddon }, { WebLinksAddon }]) => {
-        
-        console.log('[DEBUG] [TERMINAL] XTerm modules loaded');
-        const isDarkMode = document.documentElement.classList.contains('dark');
-        console.log('[DEBUG] [TERMINAL] Initial dark mode:', isDarkMode);
-        
-        term = new XTerminal({
-            rows: 15,
-            cols: 100,
-            cursorBlink: true,
-            fontSize: 14,
-            lineHeight: 1.2,
-            scrollback: 1000,
-            convertEol: true,
-            theme: isDarkMode ? darkTheme : lightTheme
-        });
+            console.log('[DEBUG] [TERMINAL] XTerm modules loaded');
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            console.log('[DEBUG] [TERMINAL] Initial dark mode:', isDarkMode);
+            
+            term = new XTerminal({
+                rows: 15,
+                cols: 100,
+                cursorBlink: true,
+                fontSize: 14,
+                lineHeight: 1.2,
+                scrollback: 1000,
+                convertEol: true,
+                theme: isDarkMode ? darkTheme : lightTheme
+            });
 
-        console.log('[DEBUG] [TERMINAL] XTerm instance created');
+            console.log('[DEBUG] [TERMINAL] XTerm instance created');
 
-        const fitAddon = new FitAddon();
-        term.loadAddon(fitAddon);
+            const fitAddon = new FitAddon();
+            term.loadAddon(fitAddon);
 
+            const webLinksAddon = new WebLinksAddon((event, uri) => {
+                console.log('[DEBUG] [TERMINAL] Web link clicked:', uri);
+                window.open(uri, '_blank');
+            });
+            term.loadAddon(webLinksAddon);
 
-        const webLinksAddon = new WebLinksAddon((event, uri) => {
-            console.log('[DEBUG] [TERMINAL] Web link clicked:', uri);
-            window.open(uri, '_blank');
-        });
-        term.loadAddon(webLinksAddon);
+            if (terminalRef) {
+                console.log('[DEBUG] [TERMINAL] Opening terminal in DOM');
+                term.open(terminalRef);
+                
+                setTimeout(() => {
+                    fitAddon.fit();
+                    terminalReady = true;
+                    console.log('[DEBUG] [TERMINAL] Terminal ready set to true');
+                    
+                    setTimeout(() => {
+                        if (term) {
+                            term.write('Waiting for container...\r\n');
+                        }
+                    }, 100);
+                }, 100);
+            }
 
+            term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+                const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+                
+                if (isCtrlOrCmd) {
+                    if (event.code === 'KeyC' && event.type === 'keydown' && term.hasSelection()) {
+                        console.log('[DEBUG] [TERMINAL] Copy command detected');
+                        document.execCommand('copy');
+                        return false;
+                    }
+                    
+                    if (event.code === 'KeyV' && event.type === 'keydown') {
+                        console.log('[DEBUG] [TERMINAL] Paste command detected');
+                        event.preventDefault();
+                        event.stopPropagation();
+                        
+                        navigator.clipboard.readText().then(text => {
+                            const cleanText = text
+                                .replace(/\r\n/g, ' ')
+                                .replace(/\n/g, ' ')
+                                .replace(/\r/g, ' ')
+                                .trim();
+                            
+                            console.log('[DEBUG] [TERMINAL] [PASTE] Original:', text.length, 'chars');
+                            console.log('[DEBUG] [TERMINAL] [PASTE] Cleaned:', cleanText);
+                            
+                            socket.emit('terminal:data', cleanText);
+                        }).catch(err => {
+                            console.error('[ERROR] [TERMINAL] Paste failed:', err);
+                        });
+                        
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
 
-        if (terminalRef) {
-            console.log('[DEBUG] [TERMINAL] Opening terminal in DOM');
-            term.open(terminalRef);
+            term.onData((data: string) => {
+                console.log('[DEBUG] [TERMINAL] User input data:', data.length, 'chars');
+                socket.emit('terminal:data', data);
+            });
+
+            function onTerminalData(data: string) {
+                console.log('[DEBUG] [TERMINAL] Received terminal data:', data.length, 'chars');
+                const clearSequences = [
+                    '\u001b[2J',
+                    '\u001b[H\u001b[2J',
+                    '\u001b[3J',
+                    '\x1Bc'
+                ];
+                
+                const hasClearSequence = clearSequences.some(seq => data.includes(seq));
+                
+                if (hasClearSequence) {
+                    console.log('[DEBUG] [TERMINAL] Clear sequence detected');
+                    term.clear();
+                    
+                    let cleanData = data;
+                    clearSequences.forEach(seq => {
+                        cleanData = cleanData.replace(new RegExp(seq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
+                    });
+                    
+                    if (cleanData) {
+                        term.write(cleanData);
+                    }
+                } else {
+                    term.write(data);
+                }
+                
+                if (data.includes('running on port') || data.includes('listening on port') || data.includes('started on port') || 
+                    data.includes('Server running') || data.includes('server running')) {
+                    console.log('[DEBUG] [TERMINAL] Server port detected in output');
+                    let detectedPort = 9000;
+                    const portMatch = data.match(/port\s+(\d+)/i);
+                    if (portMatch) {
+                        detectedPort = parseInt(portMatch[1]);
+                        console.log('[DEBUG] [TERMINAL] Extracted port number:', detectedPort);
+                    }
+                    
+                    setTimeout(() => {
+                        console.log('[DEBUG] [TERMINAL] Fetching ports after server start detection...');
+                        fetchUserPorts().then(() => {
+                            showOnlyActivePort(detectedPort);
+                        });
+                    }, 1000);
+                }
+            }
+
+            socket.on('terminal:ready', () => {
+                console.log('[DEBUG] [TERMINAL] Socket event: terminal:ready');
+                if (term) {
+                    term.clear();
+                    term.write('\x1b[2J\x1b[3J\x1b[H');
+                    term.write('Container ready! Setting up workspace...\r\n');
+                    
+                    setTimeout(() => {
+                        socket.emit("terminal:data", "export PS1='\\w\\$ '\n");
+                        socket.emit("terminal:data", "clear\n");
+                    }, 500);
+                }
+            });
+
+            const resizeObserver = new ResizeObserver(() => {
+                console.log('[DEBUG] [TERMINAL] Resize detected, fitting terminal');
+                fitAddon.fit();
+            });
+            
+            if (terminalRef) {
+                resizeObserver.observe(terminalRef);
+            }
+
+            socket.on("terminal:data", onTerminalData);
+
+            const cleanup = () => {
+                console.log('[DEBUG] [TERMINAL] Cleanup function called');
+                resizeObserver.disconnect();
+                socket.off("terminal:data", onTerminalData);
+                socket.off("terminal:ready");
+                term?.dispose();
+                window.removeEventListener('globalThemeChange', handleGlobalThemeChange as EventListener);
+            };
+
+            window.addEventListener('beforeunload', cleanup);
             
             setTimeout(() => {
-                fitAddon.fit();
-                terminalReady = true;
-                console.log('[DEBUG] [TERMINAL] Terminal ready set to true');
-                
-                setTimeout(() => {
-                    if (term) {
-                        term.write('Waiting for container...\r\n');
-                    }
-                }, 100);
-            }, 100);
-        }
-
-
-        // ✅ FIXED: Strip newlines from pasted content to prevent auto-execution
-        term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
-            const isCtrlOrCmd = event.ctrlKey || event.metaKey;
+                console.log('[DEBUG] [TERMINAL] Initial port fetch after 2s delay');
+                fetchUserPorts();
+            }, 2000);
             
-            if (isCtrlOrCmd) {
-                // Handle Copy - allow selection copy
-                if (event.code === 'KeyC' && event.type === 'keydown' && term.hasSelection()) {
-                    console.log('[DEBUG] [TERMINAL] Copy command detected');
-                    document.execCommand('copy');
-                    return false;
-                }
-                
-                // Handle Paste - prevent native paste and strip newlines
-                if (event.code === 'KeyV' && event.type === 'keydown') {
-                    console.log('[DEBUG] [TERMINAL] Paste command detected');
-                    event.preventDefault();
-                    event.stopPropagation();
-                    
-                    navigator.clipboard.readText().then(text => {
-                        // ✅ KEY FIX: Remove all newline characters to prevent auto-execution
-                        const cleanText = text
-                            .replace(/\r\n/g, ' ')  // Replace Windows line endings
-                            .replace(/\n/g, ' ')    // Replace Unix line endings  
-                            .replace(/\r/g, ' ')    // Replace Mac line endings
-                            .trim();                // Remove leading/trailing whitespace
-                        
-                        console.log('[DEBUG] [TERMINAL] [PASTE] Original:', text.length, 'chars');
-                        console.log('[DEBUG] [TERMINAL] [PASTE] Cleaned:', cleanText);
-                        
-                        // Send cleaned text without newlines
-                        socket.emit('terminal:data', cleanText);
-                    }).catch(err => {
-                        console.error('[ERROR] [TERMINAL] Paste failed:', err);
-                    });
-                    
-                    return false;
-                }
-            }
-            
-            return true;
-        });
-
-
-        // Handle keyboard input normally
-        term.onData((data: string) => {
-            console.log('[DEBUG] [TERMINAL] User input data:', data.length, 'chars');
-            socket.emit('terminal:data', data);
-        });
-
-
-        function onTerminalData(data: string) {
-            console.log('[DEBUG] [TERMINAL] Received terminal data:', data.length, 'chars');
-            const clearSequences = [
-                '\u001b[2J',
-                '\u001b[H\u001b[2J',
-                '\u001b[3J',
-                '\x1Bc'
-            ];
-            
-            const hasClearSequence = clearSequences.some(seq => data.includes(seq));
-            
-            if (hasClearSequence) {
-                console.log('[DEBUG] [TERMINAL] Clear sequence detected');
-                term.clear();
-                
-                let cleanData = data;
-                clearSequences.forEach(seq => {
-                    cleanData = cleanData.replace(new RegExp(seq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '');
-                });
-                
-                if (cleanData) {
-                    term.write(cleanData);
-                }
-            } else {
-                term.write(data);
-            }
-            
-            // Server port detection
-            if (data.includes('running on port') || data.includes('listening on port') || data.includes('started on port') || 
-                data.includes('Server running') || data.includes('server running')) {
-                console.log('[DEBUG] [TERMINAL] Server port detected in output');
-                let detectedPort = 9000;
-                const portMatch = data.match(/port\s+(\d+)/i);
-                if (portMatch) {
-                    detectedPort = parseInt(portMatch[1]);
-                    console.log('[DEBUG] [TERMINAL] Extracted port number:', detectedPort);
-                }
-                
-                setTimeout(() => {
-                    console.log('[DEBUG] [TERMINAL] Fetching ports after server start detection...');
-                    fetchUserPorts().then(() => {
-                        showOnlyActivePort(detectedPort);
-                    });
-                }, 1000);
-            }
-        }
-
-
-        socket.on('terminal:ready', () => {
-            console.log('[DEBUG] [TERMINAL] Socket event: terminal:ready');
-            if (term) {
-                term.clear();
-                term.write('\x1b[2J\x1b[3J\x1b[H');
-                term.write('Container ready! Setting up workspace...\r\n');
-                
-                setTimeout(() => {
-                    socket.emit("terminal:data", "export PS1='\\w\\$ '\n");
-                    socket.emit("terminal:data", "clear\n");
-                }, 500);
-            }
-        });
-
-
-        const resizeObserver = new ResizeObserver(() => {
-            console.log('[DEBUG] [TERMINAL] Resize detected, fitting terminal');
-            fitAddon.fit();
-        });
-        
-        if (terminalRef) {
-            resizeObserver.observe(terminalRef);
-        }
-
-
-        socket.on("terminal:data", onTerminalData);
-
-
-        const cleanup = () => {
-            console.log('[DEBUG] [TERMINAL] Cleanup function called');
-            resizeObserver.disconnect();
-            socket.off("terminal:data", onTerminalData);
-            socket.off("terminal:ready");
-            term?.dispose();
-            window.removeEventListener('globalThemeChange', handleGlobalThemeChange as EventListener);
-        };
-
-
-        window.addEventListener('beforeunload', cleanup);
-        
-        setTimeout(() => {
-            console.log('[DEBUG] [TERMINAL] Initial port fetch after 2s delay');
-            fetchUserPorts();
-        }, 2000);
-        
-        return cleanup;
+            return cleanup;
         });
     });
-
 
     function clearTerminal() {
         console.log('[DEBUG] [TERMINAL] Clear terminal button clicked');
@@ -363,7 +335,6 @@
     }
 </script>
 
-
 <div class="h-full w-full relative">
     <button 
         on:click={clearTerminal}
@@ -376,7 +347,6 @@
     <div bind:this={terminalRef} class="h-full w-full p-2 [&_a]:cursor-pointer [&_a:hover]:text-orange-500"></div>
 </div>
 
-
 <style>
     :global(.xterm .xterm-viewport::-webkit-scrollbar) {
         display: none !important;
@@ -386,7 +356,6 @@
         scrollbar-width: none !important;
         -ms-overflow-style: none !important;
     }
-
 
     :global(a):hover, :global(button):hover, :global([role="button"]):hover {
         cursor: pointer !important;
