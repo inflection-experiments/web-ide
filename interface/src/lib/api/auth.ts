@@ -1,29 +1,10 @@
 import { httpClient, API_ENDPOINTS } from './config';
-
-export interface LoginRequest {
-  usernameOrEmail: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-}
-
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  minioBucket: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
-}
+import type {
+  LoginRequest,
+  RegisterRequest,
+  User,
+  AuthResponse,
+} from '../types/types';
 
 export class AuthAPI {
   /**

@@ -1,5 +1,5 @@
-// src/lib/config.ts
 import { env } from '$env/dynamic/public';
+import type { ErrorResponse } from '../types/types'; // <-- updated import
 
 // API Configuration using environment variables
 export const API_BASE_URL = env.PUBLIC_API_BASE_URL;
@@ -23,10 +23,7 @@ export const API_ENDPOINTS = {
   }
 } as const;
 
-// Define a type for error responses
-interface ErrorResponse {
-  error?: string;
-}
+// <-- Remove the previous inline definition of ErrorResponse -->
 
 // HTTP Client configuration with CORS headers
 export const httpClient = {
