@@ -11,7 +11,10 @@
     import { auth } from '$lib/stores/auth';
     import { ModeWatcher } from 'mode-watcher';
     import { mode } from 'mode-watcher';
+    import { FolderOpen, Code2, LogOut, Loader2, Circle } from 'lucide-svelte';
+
     import "../app.css";
+
 
     // ============ DEBUG LOGGER ============
     const DEBUG_PREFIX = '[LAYOUT]';
@@ -22,6 +25,7 @@
         warn: (...args: any[]) => console.warn(`${DEBUG_PREFIX} [WARN]`, ...args),
         success: (...args: any[]) => console.log(`${DEBUG_PREFIX} [SUCCESS]`, ...args),
     };
+
 
     // ============ CONFIGURATION ============
     const CONFIG = {
@@ -34,19 +38,24 @@
         SAVE_LOCK_DURATION: 500,
     };
 
+
     log.info('Configuration loaded:', CONFIG);
+
 
     interface Props {
         children: Snippet;
     }
 
+
     let { children }: Props = $props();
+
 
     // ============ REACTIVE STATE ============
     let isAuthenticated = $derived($auth.isAuthenticated);
     let authLoading = $derived($auth.loading);
     let user = $derived($auth.user);
     let currentTheme = $derived(mode.current);
+
 
     // ============ COMPONENT STATE ============
     let minimumLoadingComplete = $state(false);
@@ -59,6 +68,7 @@
     let lastSavedContent = $state('');
     let saveInProgress = $state(false);
     let refreshInterval: ReturnType<typeof setInterval> | undefined = undefined;
+
 
     // ============ UTILITY FUNCTIONS ============
     function cleanFilePath(path: string): string {
@@ -73,6 +83,7 @@
         cleanPath = cleanPath.replace(/^\/+/, '');
         return cleanPath;
     }
+
 
     // ============ FILE TREE OPERATIONS ============
     async function loadFileTree(): Promise<void> {
@@ -101,6 +112,7 @@
             loading = false;
         }
     }
+
 
     // ============ FILE CONTENT OPERATIONS ============
     async function loadFileContent(path: string): Promise<void> {
@@ -146,6 +158,7 @@
         }
     }
 
+
     // ============ FILE SELECTION & SAVE HANDLING ============
     function handleFileSelect(path: string): void {
         const cleanPath = cleanFilePath(path);
@@ -160,6 +173,7 @@
         selectedFile = cleanPath;
         loadFileContent(cleanPath);
     }
+
 
     function handleContentSave(path: string, content: string): void {
         const cleanPath = cleanFilePath(path);
@@ -185,6 +199,7 @@
         }, CONFIG.SAVE_DEBOUNCE_DELAY);
     }
 
+
     // ============ LOGOUT & SOCKET CONNECTION ============
     async function handleLogout() {
         log.info('Logout initiated');
@@ -205,16 +220,19 @@
         }
     }
 
+
     // ============ COMPONENT LIFECYCLE ============
     onMount(() => {
         log.info('=== LAYOUT COMPONENT MOUNTED ===');
         log.debug('Socket URL:', CONFIG.SOCKET_URL);
         log.debug('API Base URL:', CONFIG.API_BASE_URL);
 
+
         setTimeout(() => {
             minimumLoadingComplete = true;
             log.debug('Minimum loading complete');
         }, CONFIG.MIN_LOADING_TIME);
+
 
         async function initializeAuth() {
             log.info('Initializing authentication...');
@@ -226,6 +244,7 @@
             }
         }
         initializeAuth();
+
 
         let socketInitialized = false;
         socket.on('connect', () => {
@@ -239,10 +258,12 @@
             }
         });
 
+
         socket.on('disconnect', () => {
             log.warn('Socket disconnected');
             socketInitialized = false;
         });
+
 
         socket.on('file:refresh', () => {
             log.info('File refresh event received');
@@ -257,7 +278,9 @@
     });
 </script>
 
+
 <ModeWatcher />
+
 
 <svelte:head>
     <title>Code Editor</title>
@@ -265,6 +288,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link href="https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&family=Epilogue:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
 </svelte:head>
+
 
 <style>
 .fade-reveal {
@@ -274,10 +298,12 @@
     opacity: 0;
 }
 
+
 @keyframes fadeReveal {
     0% { opacity: 0; }
     100% { opacity: 1; }
 }
+
 
 .grid-pattern {
     background-image: 
@@ -285,6 +311,7 @@
     background-size: 20px 20px;
 }
 </style>
+
 
 {#if authLoading || !minimumLoadingComplete}
     <div class="min-h-screen bg-background flex items-center justify-center px-4 py-4 grid-pattern font-['Cabin_Sketch', 'Epilogue']">
@@ -331,9 +358,7 @@
                     on:click={handleLogout} 
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive/10 text-destructive hover:bg-destructive/20 h-7 px-3"
                 >
-                    <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
+                    <LogOut class="w-3 h-3 mr-1.5" />
                     Logout
                 </button>
             </div>
@@ -346,20 +371,18 @@
                 <div class="lg:col-span-3 xl:col-span-2 bg-sidebar-background rounded-lg border border-sidebar-border shadow-sm overflow-hidden order-1">
                     <div class="bg-sidebar-accent/50 border-b border-sidebar-border px-4 py-3">
                         <div class="flex items-center space-x-2">
-                            <svg class="w-4 h-4 text-sidebar-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h2a2 2 0 012 2v0a2 2 0 002 2H9a2 2 0 00-2-2v0z"/>
-                            </svg>
+                            <FolderOpen class="w-4 h-4 text-sidebar-primary" />
                             <h3 class="font-semibold text-sidebar-foreground text-sm">
                                 Project Files
                             </h3>
                         </div>
                     </div>
 
+
                     <div class="p-4 overflow-y-auto">
                         {#if loading}
                             <div class="flex items-center space-x-2 text-sidebar-foreground/60">
-                                <div class="animate-spin rounded-full h-3 w-3 border-b-2 border-sidebar-primary"></div>
+                                <Loader2 class="w-3 h-3 animate-spin" />
                                 <p class="text-xs">Loading files...</p>
                             </div>
                         {:else}
@@ -373,9 +396,7 @@
                     <div class="bg-muted/30 border-b border-border px-4 py-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2">
-                                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-                                </svg>
+                                <Code2 class="w-4 h-4 text-muted-foreground" />
                                 <h3 class="font-semibold text-foreground text-sm">
                                     Code Editor
                                 </h3>
@@ -396,6 +417,7 @@
                         </div>
                     </div>
 
+
                     <div class="h-full">
                         <MonacoEditor
                             {selectedFile}
@@ -410,15 +432,16 @@
                     <div class="bg-secondary/30 border-b border-border px-4 py-3">
                         <div class="flex items-center space-x-2">
                             <div class="flex space-x-1">
-                                <div class="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
-                                <div class="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
-                                <div class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+                                <Circle class="w-2.5 h-2.5 fill-red-500 text-red-500" />
+                                <Circle class="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
+                                <Circle class="w-2.5 h-2.5 fill-green-500 text-green-500" />
                             </div>
                             <h3 class="font-semibold text-foreground text-sm ml-2">
                                 Terminal
                             </h3>
                         </div>
                     </div>
+
 
                     <div class="h-full bg-sidebar-background overflow-hidden">
                         <Terminal />
@@ -429,5 +452,6 @@
         </div>
     </div>
 {/if}
+
 
 {@render children()}

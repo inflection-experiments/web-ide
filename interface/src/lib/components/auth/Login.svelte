@@ -13,8 +13,7 @@
   // Reference to password input element (use classic binding)
   let passwordInput: HTMLInputElement;
 
-  // Reactive loading value from auth store with $ prefix
-  // Assuming auth.loading is a store
+
 let loading = $derived($auth.loading);
 
   async function handleSubmit() {
@@ -51,12 +50,6 @@ let loading = $derived($auth.loading);
     }
   }
 </script>
-
-<svelte:head>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-  <link href="https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&family=Epilogue:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
-</svelte:head>
 
 <div class="min-h-screen bg-black flex items-center justify-center px-4 py-4">
   <div class="w-full max-w-5xl">
