@@ -1,10 +1,14 @@
 <script lang="ts">
   import { auth } from '$lib/stores/auth';
-  import { createEventDispatcher } from 'svelte';
 
-  const dispatch = createEventDispatcher();
+  // ============ PROPS ============
+  interface Props {
+    onSwitch: (mode: 'register' | 'login') => void;
+  }
 
-  // Runes state
+  let { onSwitch }: Props = $props();
+
+  // ============ STATE ============
   let username = $state('');
   let email = $state('');
   let password = $state('');
@@ -19,10 +23,10 @@
   let passwordInput: HTMLInputElement;
   let confirmPasswordInput: HTMLInputElement;
 
-
   let loading = $derived($auth.loading);
   let passwordsMatch = $derived(password === confirmPassword);
 
+  // ============ FUNCTIONS ============
   async function handleSubmit() {
     errorMessage = '';
     successMessage = '';
@@ -86,7 +90,7 @@
   }
 
   function switchToLogin() {
-    dispatch('switch', 'login');
+    onSwitch('login');
   }
 
   function togglePasswordVisibility() {
@@ -116,8 +120,6 @@
     }
   }
 </script>
-
-
 
 <div class="min-h-screen bg-black flex items-center justify-center px-4 py-4">
   <div class="w-full max-w-5xl">
@@ -164,7 +166,7 @@
       <div class="md:w-1/2 p-12 flex flex-col justify-center bg-gradient-to-t from-neutral-950 to-neutral-900">
 
         {#if registrationStep === 'form'}
-          <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+          <form onsubmit={e => { e.preventDefault(); handleSubmit(); }} class="space-y-6">
             <!-- Username -->
             <div class="space-y-3">
               <label for="username" class="block text-sm font-medium text-white" style="font-family: 'Epilogue', sans-serif;">
@@ -175,7 +177,7 @@
                 type="text"
                 bind:value={username}
                 disabled={loading}
-                on:keypress={handleKeyPress}
+                onkeypress={handleKeyPress}
                 autocomplete="username"
                 class="block w-full px-3 py-2 bg-white border-0 rounded-md text-black placeholder-gray-500
                        focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50
@@ -201,7 +203,7 @@
                 type="email"
                 bind:value={email}
                 disabled={loading}
-                on:keypress={handleKeyPress}
+                onkeypress={handleKeyPress}
                 autocomplete="email"
                 class="block w-full px-3 py-2 bg-white border-0 rounded-md text-black placeholder-gray-500
                        focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50
@@ -229,7 +231,7 @@
                   type="password"
                   bind:value={password}
                   disabled={loading}
-                  on:keypress={handleKeyPress}
+                  onkeypress={handleKeyPress}
                   autocomplete="new-password"
                   class="block w-full px-3 py-2 pr-12 bg-white border-0 rounded-md text-black placeholder-gray-500
                          focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50
@@ -240,7 +242,7 @@
                 />
                 <button
                   type="button"
-                  on:click={togglePasswordVisibility}
+                  onclick={togglePasswordVisibility}
                   disabled={loading}
                   class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600
                          hover:text-gray-800 disabled:opacity-50 transition-colors cursor-pointer"
@@ -283,7 +285,7 @@
                   type="password"
                   bind:value={confirmPassword}
                   disabled={loading}
-                  on:keypress={handleKeyPress}
+                  onkeypress={handleKeyPress}
                   autocomplete="new-password"
                   class="block w-full px-3 py-2 pr-12 bg-white border-0 rounded-md text-black placeholder-gray-500
                          focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50
@@ -294,7 +296,7 @@
                 />
                 <button
                   type="button"
-                  on:click={toggleConfirmPasswordVisibility}
+                  onclick={toggleConfirmPasswordVisibility}
                   disabled={loading}
                   class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600
                          hover:text-gray-800 disabled:opacity-50 transition-colors cursor-pointer"
@@ -321,7 +323,7 @@
               {#if confirmPassword && !passwordsMatch}
                 <p class="text-xs text-red-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Passwords do not match</p>
               {:else if confirmPassword && passwordsMatch}
-                <p class="text-xs text-green-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Passwords match </p>
+                <p class="text-xs text-green-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Passwords match ✓</p>
               {/if}
             </div>
 
@@ -358,7 +360,7 @@
               <span class="text-gray-400 text-sm" style="font-family: 'Epilogue', sans-serif;">Already have an account? </span>
               <button
                 type="button"
-                on:click={switchToLogin}
+                onclick={switchToLogin}
                 disabled={loading}
                 class="text-orange-500 hover:text-orange-400 text-sm font-medium disabled:opacity-50
                        disabled:cursor-not-allowed transition-colors underline"

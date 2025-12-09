@@ -5,6 +5,7 @@
     import Terminal from '$lib/components/Terminal.svelte';
     import FileTree from '$lib/components/FileTreeNode.svelte';
     import MonacoEditor from '$lib/components/MonacoEditor.svelte';
+    import { auth } from '$lib/stores/auth'; // ADD THIS
     import { FolderOpen, Code2, Loader2, Circle } from 'lucide-svelte';
 
     // ============ DEBUG LOGGER ============
@@ -37,6 +38,9 @@
     let lastSavedContent = $state('');
     let saveInProgress = $state(false);
 
+    // ============ DERIVED STATE ============
+    let isAuthenticated = $derived($auth.isAuthenticated); // ADD THIS
+
     // ============ UTILITY FUNCTIONS ============
     function cleanFilePath(path: string): string {
         if (!path) {
@@ -55,6 +59,14 @@
     async function loadFileTree(): Promise<void> {
         const startTime = performance.now();
         log.info('Loading file tree...');
+        
+        // ADD THIS CHECK
+        if (!isAuthenticated) {
+            log.warn('Cannot load file tree - user not authenticated yet');
+            setTimeout(() => loadFileTree(), 500); // Retry after 500ms
+            return;
+        }
+        
         try {
             const token = localStorage.getItem('auth_token');
             if (!token) {
@@ -73,6 +85,8 @@
             loading = false;
             const duration = (performance.now() - startTime).toFixed(2);
             log.success(`File tree loaded in ${duration}ms`);
+            log.debug('Tree data:', tree);
+            log.debug('Tree keys count:', Object.keys(tree).length);
         } catch (error) {
             log.error('Failed to load file tree:', error);
             loading = false;
@@ -165,23 +179,35 @@
     // ============ COMPONENT LIFECYCLE ============
     onMount(() => {
         log.info('=== PAGE COMPONENT MOUNTED ===');
+        log.debug('Initial auth state:', isAuthenticated);
 
-        // Check if socket is already connected (FIX)
-        if (socket.connected) {
-            log.success('Socket already connected');
-            userId = socket.id ?? '';
-            localStorage.setItem('userId', userId);
-            log.debug('User ID:', userId);
-            loadFileTree(); // Load immediately
-        }
+        // Wait a bit for auth to complete, then load files
+        const initDelay = setTimeout(() => {
+            if (socket.connected && isAuthenticated) {
+                log.success('Socket connected and authenticated');
+                userId = socket.id ?? '';
+                localStorage.setItem('userId', userId);
+                log.debug('User ID:', userId);
+                loadFileTree();
+            } else {
+                log.warn('Socket not ready, waiting for connect event');
+            }
+        }, 100); // Small delay to let auth complete
 
-        // Listen for connect event (for future connections)
+        // Listen for connect event
         socket.on('connect', () => {
             log.success('Socket connected');
             userId = socket.id ?? '';
             localStorage.setItem('userId', userId);
             log.debug('User ID:', userId);
-            loadFileTree();
+            
+            // Wait for auth before loading
+            if (isAuthenticated) {
+                loadFileTree();
+            } else {
+                log.warn('Waiting for authentication to complete...');
+                setTimeout(() => loadFileTree(), 500);
+            }
         });
 
         socket.on('disconnect', () => {
@@ -200,6 +226,7 @@
         });
 
         return () => {
+            clearTimeout(initDelay);
             if (saveTimeout) clearTimeout(saveTimeout);
             socket.off('connect');
             socket.off('disconnect');
@@ -222,14 +249,19 @@
                 </div>
             </div>
 
-            <div class="p-4 overflow-y-auto">
+            <div class="p-4 overflow-y-auto max-h-[calc(100vh-200px)]">
                 {#if loading}
                     <div class="flex items-center space-x-2 text-sidebar-foreground/60">
                         <Loader2 class="w-3 h-3 animate-spin" />
                         <p class="text-xs">Loading files...</p>
                     </div>
+                {:else if Object.keys(tree).length === 0}
+                    <div class="text-sidebar-foreground/60 text-xs text-center py-4">
+                        <p class="mb-2">No files found</p>
+                        <p class="text-[10px] text-sidebar-foreground/40">Create files using terminal</p>
+                    </div>
                 {:else}
-                    <FileTree tree={tree} onSelect={handleFileSelect} />
+                    <FileTree {tree} onSelect={handleFileSelect} />
                 {/if}
             </div>
         </div>
