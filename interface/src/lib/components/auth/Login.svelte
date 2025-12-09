@@ -1,21 +1,24 @@
 <script lang="ts">
   import { auth } from '$lib/stores/auth';
-  import { createEventDispatcher } from 'svelte';
 
-  const dispatch = createEventDispatcher();
+  interface Props {
+    onSwitch?: (mode: 'register' | 'login') => void;
+  }
 
-  // Use $state rune for reactive state variables
+  let { onSwitch }: Props = $props();
+
+  // ============ STATE ============
   let usernameOrEmail = $state('');
   let password = $state('');
   let errorMessage = $state('');
   let showPassword = $state(false);
 
-  // Reference to password input element (use classic binding)
+  // Reference to password input element
   let passwordInput: HTMLInputElement;
 
+  let loading = $derived($auth.loading);
 
-let loading = $derived($auth.loading);
-
+  // ============ FUNCTIONS ============
   async function handleSubmit() {
     errorMessage = '';
 
@@ -33,7 +36,7 @@ let loading = $derived($auth.loading);
   }
 
   function switchToRegister() {
-    dispatch('switch', 'register');
+    onSwitch?.('register');
   }
 
   function togglePasswordVisibility() {
