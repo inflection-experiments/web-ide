@@ -1,7 +1,7 @@
 <script lang="ts">
   import { auth } from '$lib/stores/auth';
+  import { ArrowRightLeft, Eye, EyeOff, AlertCircle } from 'lucide-svelte';
 
-  // ============ PROPS ============
   interface Props {
     onSwitch: (mode: 'register' | 'login') => void;
   }
@@ -68,9 +68,7 @@
       <!-- Left Column -->
       <div class="md:w-1/2 p-12 flex flex-col justify-center items-center bg-gradient-to-b from-neutral-950 to-neutral-900">
         <div class="w-24 h-24 bg-transparent border-2 border-orange-500/30 rounded-2xl flex items-center justify-center mb-8">
-          <svg class="w-12 h-12 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-          </svg>
+          <ArrowRightLeft class="w-12 h-12 text-orange-500" />
         </div>
 
         <div class="text-center mb-12">
@@ -144,14 +142,9 @@
                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 {#if showPassword}
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"/>
-                  </svg>
+                  <EyeOff class="h-5 w-5" />
                 {:else}
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                  </svg>
+                  <Eye class="h-5 w-5" />
                 {/if}
               </button>
             </div>
@@ -164,9 +157,7 @@
 
           {#if errorMessage}
             <div class="bg-red-900/50 border border-red-600/50 text-red-200 px-4 py-3 rounded-md flex items-center space-x-2">
-              <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
+              <AlertCircle class="h-4 w-4 flex-shrink-0" />
               <span class="text-sm" style="font-family: 'Epilogue', sans-serif;">{errorMessage}</span>
             </div>
           {/if}
