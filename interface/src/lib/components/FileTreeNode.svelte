@@ -1,8 +1,11 @@
 <script lang="ts">
   import { FolderOpen, Folder, File, ChevronRight } from 'lucide-svelte';
-  import { PUBLIC_API_BASE_URL } from '$env/static/public';
-
-  console.log('[DEBUG] [ENV] API_BASE_URL loaded:', PUBLIC_API_BASE_URL);
+  import { 
+    loadDirectoryContents as loadDirectory,
+    createFileOrFolder,
+    renameFileOrFolder,
+    deleteFileOrFolder
+  } from '$lib/services/file-service';
 
   let { tree, onSelect, currentPath = '' } = $props<{
     tree: Record<string, any>;
@@ -34,18 +37,10 @@
     loadingDirs = new Set(loadingDirs); 
     
     try {
-      const url: string = `${PUBLIC_API_BASE_URL}/files/directory?userId=${encodeURIComponent(userId)}&path=${encodeURIComponent(fullPath)}`;
-      console.log('[DEBUG] Request URL:', url);
-      console.log('[DEBUG] [ENV CHECK] Using API_BASE_URL:', PUBLIC_API_BASE_URL);
+      console.log('[DEBUG] Request URL for path:', fullPath);
       
-      const response: Response = await fetch(url);
+      const data: { items: string[] } = await loadDirectory(userId, fullPath);
       
-      if (!response.ok) {
-        console.error('[ERROR] Failed to load directory:', response.status, response.statusText);
-        return;
-      }
-      
-      const data: { items: string[] } = await response.json();
       const items: string[] = data.items || [];
       console.log('[DEBUG] Directory items received:', items);
       
@@ -161,36 +156,18 @@
         return;
       }
       
-      const requestPayload = {
-        userId: userId,
-        path: newItemName.trim(),
-        type: newItemType,
-        content: newItemType === 'file' ? '' : undefined,
-        parentPath: parentPath
-      };
+      await createFileOrFolder(userId, newItemName.trim(), newItemType, parentPath);
       
-      const response: Response = await fetch(`${PUBLIC_API_BASE_URL}/files/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload)
-      });
+      showCreateDialog = false;
       
-      if (response.ok) {
-        showCreateDialog = false;
-        
-        if (contextMenuType === 'directory') {
-          const dirName = contextMenuPath.split('/').pop() || contextMenuPath;
-          await loadDirectoryContents(dirName, contextMenuPath);
-        }
-        
-        await forceRefreshAllExpandedDirs();
-        window.dispatchEvent(new CustomEvent('refreshFileTree'));
-        
-      } else {
-        const result = await response.json();
-        console.error('[ERROR] CREATE FAILED:', result.error);
-        alert(`Failed to create item: ${result.error || 'Unknown error'}`);
+      if (contextMenuType === 'directory') {
+        const dirName = contextMenuPath.split('/').pop() || contextMenuPath;
+        await loadDirectoryContents(dirName, contextMenuPath);
       }
+      
+      await forceRefreshAllExpandedDirs();
+      window.dispatchEvent(new CustomEvent('refreshFileTree'));
+      
     } catch (error) {
       console.error('[ERROR] CREATE Network error:', error);
       alert('Network error occurred.');
@@ -213,29 +190,13 @@
         return;
       }
       
-      const renamePayload = {
-        userId,
-        oldPath: contextMenuPath,
-        newPath: newPath
-      };
+      await renameFileOrFolder(userId, contextMenuPath, newPath);
       
-      const response: Response = await fetch(`${PUBLIC_API_BASE_URL}/files/rename`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(renamePayload)
-      });
+      showRenameDialog = false;
       
-      if (response.ok) {
-        showRenameDialog = false;
-        
-        await forceRefreshAllExpandedDirs();
-        window.dispatchEvent(new CustomEvent('refreshFileTree'));
-        
-      } else {
-        const result = await response.json();
-        console.error('[ERROR] RENAME FAILED:', result.error || 'Unknown error');
-        alert('Failed to rename item: ' + (result.error || 'Unknown error'));
-      }
+      await forceRefreshAllExpandedDirs();
+      window.dispatchEvent(new CustomEvent('refreshFileTree'));
+      
     } catch (error) {
       console.error('[ERROR] RENAME Network error:', error);
       alert('Network error during rename.');
@@ -256,23 +217,13 @@
         return;
       }
       
-      const deleteUrl = `${PUBLIC_API_BASE_URL}/files/delete?userId=${userId}&path=${encodeURIComponent(contextMenuPath)}`;
+      await deleteFileOrFolder(userId, contextMenuPath);
       
-      const response: Response = await fetch(deleteUrl, {
-        method: 'DELETE'
-      });
+      showContextMenu = false;
       
-      if (response.ok) {
-        showContextMenu = false;
-        
-        await forceRefreshAllExpandedDirs();
-        window.dispatchEvent(new CustomEvent('refreshFileTree'));
-        
-      } else {
-        const result = await response.json();
-        console.error('[ERROR] DELETE FAILED:', result.error || 'Unknown error');
-        alert('Failed to delete item: ' + (result.error || 'Unknown error'));
-      }
+      await forceRefreshAllExpandedDirs();
+      window.dispatchEvent(new CustomEvent('refreshFileTree'));
+      
     } catch (error) {
       console.error('[ERROR] DELETE Network error:', error);
       alert('Network error during delete.');

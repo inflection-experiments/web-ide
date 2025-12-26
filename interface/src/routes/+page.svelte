@@ -7,6 +7,8 @@
     import Theme from '$lib/components/theme/Theme.svelte';
     import { auth } from '$lib/stores/auth';
     import { FolderOpen, Code2, LogOut, Circle, Loader2 } from 'lucide-svelte';
+    import { fetchFileTreeRaw, fetchFileContentRaw } from '$lib/services/file-service';
+
 
     // Get auth context from layout
     const authContext = getContext<{
@@ -14,6 +16,7 @@
         user: any;
         loading: boolean;
     }>('auth');
+
 
     let tree = $state<Record<string, any>>({});
     let loading = $state(true);
@@ -24,6 +27,7 @@
     let lastSavedContent = $state('');
     let saveInProgress = $state(false);
     let refreshInterval: ReturnType<typeof setInterval>;
+
 
     function cleanFilePath(path: string): string {
         if (!path) return '';
@@ -36,80 +40,71 @@
         return cleanPath;
     }
 
+
     async function loadFileTree(): Promise<void> {
+        console.log('[PAGE] loadFileTree started');
         try {
-            const token = localStorage.getItem('auth_token');
-            if (!token) {
-                console.error('[ERROR] No auth token for file tree request');
+            const data = await fetchFileTreeRaw();
+            console.log('[PAGE] Received data from service:', data);
+            
+            if (!data) {
+                console.log('[PAGE] No data returned from service');
                 return;
             }
-
-            console.log('[DEBUG] Loading file tree with auth token...');
-            const response = await fetch('http://localhost:9000/files', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
+            
             tree = data.tree || {};
             loading = false;
-            console.log('[DEBUG] File tree loaded successfully');
+            console.log('[PAGE] File tree loaded successfully, items:', Object.keys(tree).length);
         } catch (error) {
-            console.error('[ERROR] Error loading file tree:', error);
+            console.error('[PAGE ERROR] Error loading file tree:', error);
             loading = false;
         }
     }
 
+
     async function loadFileContent(path: string): Promise<void> {
-        if (!path) return;
+        console.log('[PAGE] loadFileContent started for:', path);
+        if (!path) {
+            console.log('[PAGE] No path provided');
+            return;
+        }
         
         try {
-            const token = localStorage.getItem('auth_token');
-            if (!token) {
-                console.error('[ERROR] No auth token for file content request');
+            const cleanPath = cleanFilePath(path);
+            console.log('[PAGE] Cleaned path:', cleanPath);
+            
+            const data = await fetchFileContentRaw(cleanPath);
+            console.log('[PAGE] Received content data from service');
+            
+            if (!data) {
+                console.log('[PAGE] No data returned from service');
                 return;
             }
-
-            const cleanPath = cleanFilePath(path);
-            const params = new URLSearchParams({ path: cleanPath });
             
-            console.log(`[DEBUG] Loading file content with auth token: ${cleanPath}`);
-            const response = await fetch(`http://localhost:9000/files/content?${params.toString()}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }  
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
             let content = data.content || '';
+            console.log('[PAGE] Content length:', content.length);
             
             if (cleanPath.endsWith('.json') && content.trim()) {
+                console.log('[PAGE] Attempting JSON formatting');
                 try {
                     const parsed = JSON.parse(content);
                     content = JSON.stringify(parsed, null, 2);
+                    console.log('[PAGE] JSON formatted successfully');
                 } catch (jsonError) {
-                    // Use raw content if JSON parsing fails
+                    console.log('[PAGE] JSON parsing failed, using raw content');
                 }
             }
             
             selectedFileContent = content;
             lastSavedContent = content;
-            console.log(`[DEBUG] File content loaded successfully: ${cleanPath}`);
+            console.log('[PAGE] File content loaded successfully');
         } catch (error) {
-            console.error('[ERROR] Failed to load file content:', error);
+            console.error('[PAGE ERROR] Failed to load file content:', error);
             selectedFileContent = '';
             lastSavedContent = '';
         }
     }
+
 
     function handleFileSelect(path: string): void {
         const cleanPath = cleanFilePath(path);
@@ -122,6 +117,7 @@
         selectedFile = cleanPath;
         loadFileContent(cleanPath);
     }
+
 
     function handleContentSave(path: string, content: string): void {
         const cleanPath = cleanFilePath(path);
@@ -153,6 +149,7 @@
         }, 1000);
     }
 
+
     async function handleLogout() {
         try {
             if (saveTimeout) clearTimeout(saveTimeout);
@@ -170,6 +167,7 @@
             window.location.reload();
         }
     }
+
 
     onMount(() => {
         console.log('[PAGE] Mounted');
@@ -244,6 +242,7 @@
     });
 </script>
 
+
 <div class="h-screen flex flex-col bg-background font-['Epunda_Slab']">
     <div class="bg-sidebar-background/95 backdrop-blur-sm border-b border-sidebar-border text-sidebar-foreground text-xs px-4 py-3 flex justify-between items-center">
         <div class="flex items-center space-x-3">
@@ -283,6 +282,7 @@
                     </div>
                 </div>
 
+
                 <div class="p-4 overflow-y-auto">
                     {#if loading}
                         <div class="flex items-center space-x-2 text-sidebar-foreground/60">
@@ -321,6 +321,7 @@
                     </div>
                 </div>
 
+
                 <div class="h-full">
                     <MonacoEditor
                         {selectedFile}
@@ -344,6 +345,7 @@
                         </h3>
                     </div>
                 </div>
+
 
                 <div class="h-full bg-sidebar-background overflow-hidden">
                     <Terminal />
