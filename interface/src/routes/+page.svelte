@@ -6,7 +6,7 @@
     import MonacoEditor from '$lib/components/MonacoEditor.svelte';
     import Theme from '$lib/components/theme/Theme.svelte';
     import { auth } from '$lib/stores/auth';
-    import { FolderOpen, Code2, LogOut, Circle, Loader2 } from 'lucide-svelte';
+    import Icon from '@iconify/svelte';
     import { fetchFileTreeRaw, fetchFileContentRaw } from '$lib/services/file-service';
 
 
@@ -262,7 +262,7 @@
                 onclick={handleLogout} 
                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive/10 text-destructive hover:bg-destructive/20 h-7 px-3"
             >
-                <LogOut class="w-3 h-3 mr-1.5" />
+                <Icon icon="lucide:log-out" class="w-3 h-3 mr-1.5" />
                 Logout
             </button>
         </div>
@@ -275,7 +275,7 @@
             <div class="lg:col-span-3 xl:col-span-2 bg-sidebar-background rounded-lg border border-sidebar-border shadow-sm overflow-hidden order-1">
                 <div class="bg-sidebar-accent/50 border-b border-sidebar-border px-4 py-3">
                     <div class="flex items-center space-x-2">
-                        <FolderOpen class="w-4 h-4 text-sidebar-primary" />
+                        <Icon icon="lucide:folder-open" class="w-4 h-4 text-sidebar-primary" />
                         <h3 class="font-semibold text-sidebar-foreground text-sm">
                             Project Files
                         </h3>
@@ -286,7 +286,7 @@
                 <div class="p-4 overflow-y-auto">
                     {#if loading}
                         <div class="flex items-center space-x-2 text-sidebar-foreground/60">
-                            <Loader2 class="w-3 h-3 animate-spin" />
+                            <Icon icon="lucide:loader-2" class="w-3 h-3 animate-spin" />
                             <p class="text-xs">Loading files...</p>
                         </div>
                     {:else}
@@ -300,7 +300,7 @@
                 <div class="bg-muted/30 border-b border-border px-4 py-3">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
-                            <Code2 class="w-4 h-4 text-muted-foreground" />
+                            <Icon icon="lucide:code-2" class="w-4 h-4 text-muted-foreground" />
                             <h3 class="font-semibold text-foreground text-sm">
                                 Code Editor
                             </h3>
@@ -336,9 +336,7 @@
                 <div class="bg-secondary/30 border-b border-border px-4 py-3">
                     <div class="flex items-center space-x-2">
                         <div class="flex space-x-1">
-                            <Circle class="w-2.5 h-2.5 fill-red-500 text-red-500" />
-                            <Circle class="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
-                            <Circle class="w-2.5 h-2.5 fill-green-500 text-green-500" />
+                            <Icon icon="lucide:terminal" class="w-4 h-4 text-sidebar-primary" />
                         </div>
                         <h3 class="font-semibold text-foreground text-sm ml-2">
                             Terminal

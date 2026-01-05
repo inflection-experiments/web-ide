@@ -1,6 +1,6 @@
 <script lang="ts">
   import { auth } from '$lib/stores/auth';
-  import { ArrowRightLeft, Eye, EyeOff, AlertCircle } from 'lucide-svelte';
+  import Icon from '@iconify/svelte';
 
   interface Props {
     onSwitch: (mode: 'register' | 'login') => void;
@@ -68,7 +68,7 @@
       <!-- Left Column -->
       <div class="md:w-1/2 p-12 flex flex-col justify-center items-center bg-gradient-to-b from-neutral-950 to-neutral-900">
         <div class="w-24 h-24 bg-transparent border-2 border-orange-500/30 rounded-2xl flex items-center justify-center mb-8">
-          <ArrowRightLeft class="w-12 h-12 text-orange-500" />
+          <Icon icon="lucide:arrow-right-left" class="w-12 h-12 text-orange-500" />
         </div>
 
         <div class="text-center mb-12">
@@ -142,9 +142,9 @@
                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 {#if showPassword}
-                  <EyeOff class="h-5 w-5" />
+                  <Icon icon="lucide:eye-off" class="h-5 w-5" />
                 {:else}
-                  <Eye class="h-5 w-5" />
+                  <Icon icon="lucide:eye" class="h-5 w-5" />
                 {/if}
               </button>
             </div>
@@ -157,7 +157,7 @@
 
           {#if errorMessage}
             <div class="bg-red-900/50 border border-red-600/50 text-red-200 px-4 py-3 rounded-md flex items-center space-x-2">
-              <AlertCircle class="h-4 w-4 flex-shrink-0" />
+              <Icon icon="lucide:alert-circle" class="h-4 w-4 flex-shrink-0" />
               <span class="text-sm" style="font-family: 'Epilogue', sans-serif;">{errorMessage}</span>
             </div>
           {/if}

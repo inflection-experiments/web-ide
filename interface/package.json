@@ -40,10 +40,10 @@
 		"vite": "^7.0.4"
 	},
 	"dependencies": {
+		"@iconify/svelte": "^5.1.0",
 		"@xterm/addon-fit": "^0.10.0",
 		"@xterm/addon-web-links": "^0.11.0",
 		"@xterm/xterm": "^5.5.0",
-		"lucide-svelte": "^0.544.0",
 		"mode-watcher": "^1.1.0",
 		"monaco-editor": "^0.52.2",
 		"socket.io-client": "^4.8.1"

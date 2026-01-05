@@ -1,6 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { ChevronRight, Save, AlertTriangle, CheckCircle2, FileText, FileCode, Palette, Globe, FileJson, FileType, Braces, Coffee, Settings, FolderOpen } from 'lucide-svelte';
+  import Icon from '@iconify/svelte';
 
   // FIX: Use 'let' with $state, not 'const'
   let code = $state('');
@@ -277,17 +277,17 @@
   function getFileIcon(filename: string) {
     const ext = filename.split('.').pop()?.toLowerCase();
     switch (ext) {
-      case 'js': return { component: FileCode, class: 'text-yellow-600 dark:text-yellow-400' };
-      case 'ts': return { component: FileCode, class: 'text-blue-600 dark:text-blue-400' };
-      case 'svelte': return { component: Braces, class: 'text-orange-600 dark:text-orange-400' };
-      case 'css': return { component: Palette, class: 'text-purple-600 dark:text-purple-400' };
-      case 'html': return { component: Globe, class: 'text-red-600 dark:text-red-400' };
-      case 'json': return { component: FileJson, class: 'text-green-600 dark:text-green-400' };
-      case 'md': return { component: FileType, class: 'text-gray-600 dark:text-gray-400' };
-      case 'py': return { component: FileCode, class: 'text-green-600 dark:text-green-400' };
-      case 'java': return { component: Coffee, class: 'text-orange-600 dark:text-orange-400' };
-      case 'cpp': case 'c': return { component: Settings, class: 'text-gray-600 dark:text-gray-400' };
-      default: return { component: FileText, class: 'text-gray-500 dark:text-gray-400' };
+      case 'js': return { icon: 'lucide:file-code', class: 'text-yellow-600 dark:text-yellow-400' };
+      case 'ts': return { icon: 'lucide:file-code', class: 'text-blue-600 dark:text-blue-400' };
+      case 'svelte': return { icon: 'lucide:braces', class: 'text-orange-600 dark:text-orange-400' };
+      case 'css': return { icon: 'lucide:palette', class: 'text-purple-600 dark:text-purple-400' };
+      case 'html': return { icon: 'lucide:globe', class: 'text-red-600 dark:text-red-400' };
+      case 'json': return { icon: 'lucide:file-json', class: 'text-green-600 dark:text-green-400' };
+      case 'md': return { icon: 'lucide:file-type', class: 'text-gray-600 dark:text-gray-400' };
+      case 'py': return { icon: 'lucide:file-code', class: 'text-green-600 dark:text-green-400' };
+      case 'java': return { icon: 'lucide:coffee', class: 'text-orange-600 dark:text-orange-400' };
+      case 'cpp': case 'c': return { icon: 'lucide:settings', class: 'text-gray-600 dark:text-gray-400' };
+      default: return { icon: 'lucide:file-text', class: 'text-gray-500 dark:text-gray-400' };
     }
   }
 </script>
@@ -296,20 +296,20 @@
   <div class="editor-header bg-white dark:bg-stone-900 border-b border-gray-300 dark:border-stone-700">
     <div class="flex items-center justify-between px-4 py-2">
       <div class="flex items-center gap-2 flex-1 min-w-0">
-        <FolderOpen size="16" class="text-gray-500 dark:text-stone-400 flex-shrink-0" />
+        <Icon icon="lucide:folder-open" width="16" height="16" class="text-gray-500 dark:text-stone-400 flex-shrink-0" />
         {#each pathParts as part, i}
           {#if i === pathParts.length - 1}
             {#each [getFileIcon(part)] as iconInfo}
-              {@const { component: IconComponent, class: iconClass } = iconInfo}
+              {@const { icon: iconName, class: iconClass } = iconInfo}
               <div class="flex items-center gap-2">
-                <svelte:component this={IconComponent} size="16" class={iconClass} />
+                <Icon icon={iconName} width="16" height="16" class={iconClass} />
                 <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">{part}</span>
               </div>
             {/each}
           {:else}
             <div class="flex items-center gap-1">
               <span class="text-sm text-gray-600 dark:text-stone-400 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-stone-800 transition-colors truncate">{part}</span>
-              <ChevronRight size="12" class="text-gray-400 dark:text-stone-500 flex-shrink-0" />
+              <Icon icon="lucide:chevron-right" width="12" height="12" class="text-gray-400 dark:text-stone-500 flex-shrink-0" />
             </div>
           {/if}
         {/each}
@@ -318,12 +318,12 @@
       <div class="flex items-center gap-3 flex-shrink-0 ml-4">
         {#if isSaved}
           <div class="flex items-center gap-1.5 text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-green-300 dark:border-green-700">
-            <CheckCircle2 size="14" />
+            <Icon icon="lucide:check-circle-2" width="14" height="14" />
             <span class="text-xs font-medium">Saved</span>
           </div>
         {:else}
           <div class="flex items-center gap-1.5 text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 px-3 py-1.5 rounded-lg border border-orange-300 dark:border-orange-700">
-            <AlertTriangle size="14" />
+            <Icon icon="lucide:alert-triangle" width="14" height="14" />
             <span class="text-xs font-medium">Unsaved</span>
           </div>
         {/if}
@@ -337,7 +337,7 @@
             }"
           disabled={isSaved}
         >
-          <Save size="12" />
+          <Icon icon="lucide:save" width="12" height="12" />
           <span>Save</span>
           <span class="text-xs opacity-75">(Ctrl+S)</span>
         </button>

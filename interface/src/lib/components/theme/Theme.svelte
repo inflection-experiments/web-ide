@@ -1,7 +1,7 @@
 <script lang="ts">
     import { toggleMode } from 'mode-watcher';
     import { Button } from '$lib/components/ui/button';
-    import { Sun, Moon } from 'lucide-svelte';
+    import Icon from '@iconify/svelte';
 </script>
 
 <Button
@@ -22,7 +22,8 @@
     "
     aria-label="Toggle theme"
 >
-    <Sun
+    <Icon
+        icon="lucide:sun"
         class="
             h-3.5 w-3.5 
             text-foreground
@@ -33,7 +34,8 @@
             group-active:scale-90
         "
     />
-    <Moon
+    <Icon
+        icon="lucide:moon"
         class="
             absolute h-3.5 w-3.5 
             text-orange-400 dark:text-orange-500

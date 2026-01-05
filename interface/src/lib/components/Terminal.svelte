@@ -2,9 +2,10 @@
     import { onMount } from 'svelte';
     import { browser } from '$app/environment';
     import socket from '$lib/socket';
-    import { Trash2 } from 'lucide-svelte';
+    import Icon from '@iconify/svelte';
     import '@xterm/xterm/css/xterm.css';
     import { fetchUserPortsRaw } from '$lib/services/file-service';
+    import { TERMINAL_LIGHT_THEME, TERMINAL_DARK_THEME } from '$lib/constants';
 
 
     let terminalRef: HTMLDivElement | null = null;
@@ -33,63 +34,13 @@
     }
 
 
-    const lightTheme = {
-        background: '#ffffff',
-        foreground: '#000000',
-        cursor: '#ff6600',
-        cursorAccent: '#ffffff',
-        selectionBackground: '#b3d4fc',
-        selectionForeground: '#000000',
-        black: '#000000',
-        red: '#cc0000',
-        green: '#4e9a06',
-        yellow: '#c4a000',
-        blue: '#3465a4',
-        magenta: '#75507b',
-        cyan: '#06989a',
-        white: '#d3d7cf',
-        brightBlack: '#555753',
-        brightRed: '#ef2929',
-        brightGreen: '#8ae234',
-        brightYellow: '#fce94f',
-        brightBlue: '#729fcf',
-        brightMagenta: '#ad7fa8',
-        brightCyan: '#34e2e2',
-        brightWhite: '#eeeeec'
-    };
-
-
-    const darkTheme = {
-        background: '#000000',
-        foreground: '#ffffff',
-        cursor: '#ff6600',
-        cursorAccent: '#000000',
-        selectionBackground: '#ff6600',
-        selectionForeground: '#000000',
-        black: '#555555',
-        red: '#ff5555',
-        green: '#50fa7b',
-        yellow: '#f1fa8c',
-        blue: '#8be9fd',
-        magenta: '#ff79c6',
-        cyan: '#8be9fd',
-        white: '#ffffff',
-        brightBlack: '#666666',
-        brightRed: '#ff6b6b',
-        brightGreen: '#69ff94',
-        brightYellow: '#ffffa5',
-        brightBlue: '#d6acff',
-        brightMagenta: '#ff92df',
-        brightCyan: '#a4ffff',
-        brightWhite: '#ffffff'
-    };
 
 
     function updateTerminalTheme() {
         console.log('[DEBUG] [TERMINAL] updateTerminalTheme called, term ready:', terminalReady);
         if (term && terminalReady) {
             const isDark = document.documentElement.classList.contains('dark');
-            const newTheme = isDark ? darkTheme : lightTheme;
+            const newTheme = isDark ? TERMINAL_DARK_THEME : TERMINAL_LIGHT_THEME;
             
             console.log('[DEBUG] [TERMINAL] Updating theme to:', isDark ? 'DARK' : 'LIGHT');
             
@@ -153,7 +104,7 @@
                 lineHeight: 1.2,
                 scrollback: 1000,
                 convertEol: true,
-                theme: isDarkMode ? darkTheme : lightTheme
+                theme: isDarkMode ? TERMINAL_DARK_THEME : TERMINAL_LIGHT_THEME
             });
 
 
@@ -347,11 +298,11 @@
 
 <div class="h-full w-full relative">
     <button 
-        on:click={clearTerminal}
+        onclick={clearTerminal}
         class="absolute top-3 right-3 z-50 bg-background/90 hover:bg-muted border border-border text-foreground text-xs px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 backdrop-blur-sm shadow-lg hover:cursor-pointer"
         title="Clear Terminal"
     >
-        <Trash2 size={14} />
+        <Icon icon="lucide:trash-2" width="14" height="14" />
     </button>
     
     <div bind:this={terminalRef} class="h-full w-full p-2 [&_a]:cursor-pointer [&_a:hover]:text-orange-500"></div>

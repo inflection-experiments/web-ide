@@ -1,6 +1,6 @@
 <script lang="ts">
   import { auth } from '$lib/stores/auth';
-  import { UserPlus, Eye, EyeOff, AlertCircle, CheckCircle, ArrowRight, Loader2, Code, Lock, Container } from 'lucide-svelte';
+  import Icon from '@iconify/svelte';
 
 
   interface Props {
@@ -157,7 +157,7 @@
       <!-- Left Column -->
       <div class="md:w-1/2 p-12 flex flex-col justify-center items-center bg-gradient-to-b from-neutral-950 to-neutral-900">
         <div class="w-24 h-24 bg-transparent border-2 border-orange-500/30 rounded-2xl flex items-center justify-center mb-8">
-          <UserPlus class="w-12 h-12 text-orange-500" />
+          <Icon icon="lucide:user-plus" class="w-12 h-12 text-orange-500" />
         </div>
 
 
@@ -273,9 +273,9 @@
                          hover:text-gray-800 disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   {#if showPassword}
-                    <EyeOff class="h-5 w-5" />
+                    <Icon icon="lucide:eye-off" class="h-5 w-5" />
                   {:else}
-                    <Eye class="h-5 w-5" />
+                    <Icon icon="lucide:eye" class="h-5 w-5" />
                   {/if}
                 </button>
               </div>
@@ -316,9 +316,9 @@
                          hover:text-gray-800 disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   {#if showConfirmPassword}
-                    <EyeOff class="h-5 w-5" />
+                    <Icon icon="lucide:eye-off" class="h-5 w-5" />
                   {:else}
-                    <Eye class="h-5 w-5" />
+                    <Icon icon="lucide:eye" class="h-5 w-5" />
                   {/if}
                 </button>
               </div>
@@ -332,7 +332,7 @@
 
             {#if errorMessage}
               <div class="bg-red-900/50 border border-red-600/50 text-red-200 px-4 py-3 rounded-md flex items-center space-x-2">
-                <AlertCircle class="h-4 w-4 flex-shrink-0" />
+                <Icon icon="lucide:alert-circle" class="h-4 w-4 flex-shrink-0" />
                 <span class="text-sm" style="font-family: 'Epilogue', sans-serif;">{errorMessage}</span>
               </div>
             {/if}
@@ -349,7 +349,7 @@
             >
               {#if loading}
                 <div class="flex items-center justify-center space-x-2">
-                  <Loader2 class="h-4 w-4 animate-spin" />
+                  <Icon icon="lucide:loader-2" class="h-4 w-4 animate-spin" />
                   <span>Creating Account...</span>
                 </div>
               {:else}
@@ -376,7 +376,7 @@
 
         {:else if registrationStep === 'loading'}
           <div class="flex flex-col items-center justify-center py-12">
-            <Loader2 class="w-16 h-16 text-orange-500 animate-spin" />
+            <Icon icon="lucide:loader-2" class="w-16 h-16 text-orange-500 animate-spin" />
             <div class="mt-6 text-center">
               <h3 class="text-lg font-medium text-white mb-2" style="font-family: 'Cabin Sketch', cursive;">Creating Your Account</h3>
               <p class="text-gray-400 text-sm" style="font-family: 'Epilogue', sans-serif;">Setting up your coding environment...</p>
@@ -392,7 +392,7 @@
         {:else if registrationStep === 'success'}
           <div class="flex flex-col items-center justify-center py-12">
             <div class="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center animate-pulse">
-              <CheckCircle class="w-8 h-8 text-white" />
+              <Icon icon="lucide:check-circle" class="w-8 h-8 text-white" />
             </div>
             <div class="mt-6 text-center">
               <h3 class="text-xl font-semibold text-orange-400 mb-2" style="font-family: 'Cabin Sketch', cursive;">{successMessage}</h3>
@@ -404,7 +404,7 @@
         {:else if registrationStep === 'redirecting'}
           <div class="flex flex-col items-center justify-center py-12">
             <div class="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center">
-              <ArrowRight class="w-8 h-8 text-white animate-bounce" />
+              <Icon icon="lucide:arrow-right" class="w-8 h-8 text-white animate-bounce" />
             </div>
             <div class="mt-6 text-center">
               <h3 class="text-lg font-medium text-orange-400 mb-2" style="font-family: 'Cabin Sketch', cursive;">{successMessage}</h3>
