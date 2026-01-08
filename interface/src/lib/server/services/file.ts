@@ -1,34 +1,52 @@
 import { env } from '$env/dynamic/private';
 
-const BACKEND_URL = env.BACKEND_URL || 'http://localhost:9000';
+const BACKEND_URL = env.BACKEND_URL || 'http://127.0.0.1:9000';
 
 export const FileService = {
     async getFileTree(token: string) {
-        const response = await fetch(`${BACKEND_URL}/files`, {
-            headers: {
-                'Authorization': token
+        console.log(`[FileService] Fetching file tree from: ${BACKEND_URL}/files`);
+        try {
+            const response = await fetch(`${BACKEND_URL}/files`, {
+                headers: {
+                    'Authorization': token
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[FileService] Backend error: ${response.status} - ${errorText}`);
+                throw new Error(errorText || `Backend responded with ${response.status}`);
             }
-        });
 
-        if (!response.ok) {
-            throw new Error(await response.text());
+            return response.json();
+        } catch (error) {
+            console.error('[FileService] Network or parsing error:', error);
+            throw error;
         }
-
-        return response.json();
     },
 
     async getFileContent(token: string, path: string) {
-        const params = new URLSearchParams({ path });
-        const response = await fetch(`${BACKEND_URL}/files/content?${params.toString()}`, {
-            headers: {
-                'Authorization': token
+        try {
+            const params = new URLSearchParams({ path });
+            const url = `${BACKEND_URL}/files/content?${params.toString()}`;
+            console.log(`[FileService] Fetching content from: ${url}`);
+
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': token
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[FileService] Backend content error: ${response.status} - ${errorText}`);
+                throw new Error(errorText || `Backend responded with ${response.status}`);
             }
-        });
 
-        if (!response.ok) {
-            throw new Error(await response.text());
+            return response.json();
+        } catch (error) {
+            console.error('[FileService] Content fetch error:', error);
+            throw error;
         }
-
-        return response.json();
     }
 };
