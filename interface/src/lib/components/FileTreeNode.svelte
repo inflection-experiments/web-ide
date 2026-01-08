@@ -400,15 +400,23 @@
   });
 </script>
 
-<div class="min-h-full w-full bg-transparent p-2" on:contextmenu={handleEmptySpaceContextMenu}>
+<div class="min-h-full w-full bg-transparent p-2" oncontextmenu={handleEmptySpaceContextMenu} role="tree" tabindex="0">
   {#each Object.entries(tree) as [name, value]}
     {#if value !== null && typeof value === 'object'}
       <!-- Directory -->
-      <div class="mb-0.5">
+      <div class="mb-0.5" role="treeitem" aria-expanded={expandedDirs.has(name)} tabindex="0">
         <div 
           class="cursor-pointer px-2 py-1 select-none rounded-md flex items-center gap-2 transition-all duration-200 hover:bg-gray-200/70 dark:hover:bg-orange-800/30 {expandedDirs.has(name) ? 'bg-gray-300/80 dark:bg-orange-900/40' : ''} group"
-          on:click={() => handleFileClick(name, true, currentPath ? `${currentPath}/${name}` : name)}
-          on:contextmenu={(e) => handleContextMenu(e, name, currentPath ? `${currentPath}/${name}` : name, true)}
+          onclick={() => handleFileClick(name, true, currentPath ? `${currentPath}/${name}` : name)}
+          oncontextmenu={(e) => handleContextMenu(e, name, currentPath ? `${currentPath}/${name}` : name, true)}
+          role="button"
+          tabindex="0"
+          onkeydown={(e) => { 
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleFileClick(name, true, currentPath ? `${currentPath}/${name}` : name);
+            }
+          }}
         >
           <!-- Expand/Collapse Arrow -->
           <div class="w-4 h-4 flex items-center justify-center">
@@ -472,8 +480,16 @@
       <!-- File -->
       <div 
         class="cursor-pointer px-2 py-1 select-none rounded-md flex items-center gap-2 transition-all duration-200 hover:bg-gray-100/70 dark:hover:bg-gray-800/30 group mb-0.5"
-        on:click={() => handleFileClick(name, false, currentPath ? `${currentPath}/${name}` : name)}
-        on:contextmenu={(e) => handleContextMenu(e, name, currentPath ? `${currentPath}/${name}` : name, false)}
+        onclick={() => handleFileClick(name, false, currentPath ? `${currentPath}/${name}` : name)}
+        oncontextmenu={(e) => handleContextMenu(e, name, currentPath ? `${currentPath}/${name}` : name, false)}
+        role="button"
+        tabindex="0"
+        onkeydown={(e) => { 
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleFileClick(name, false, currentPath ? `${currentPath}/${name}` : name);
+            }
+        }}
       >
         <!-- Spacer for alignment with folders -->
         <div class="w-4 h-4"></div>
@@ -500,21 +516,45 @@
       class="fixed bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 shadow-xl z-50 min-w-44 rounded-lg overflow-hidden backdrop-blur-sm"
       style="position: fixed; top: {contextMenuPosition.y}px; left: {contextMenuPosition.x}px;"
     >
-      <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={() => createNewItem('file')}>
+      <div 
+        class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" 
+        onclick={() => createNewItem('file')}
+        role="menuitem"
+        tabindex="0"
+        onkeydown={(e) => e.key === 'Enter' && createNewItem('file')}
+      >
         <File size="16" />
         <span>New File</span>
       </div>
-      <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={() => createNewItem('directory')}>
+      <div 
+        class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" 
+        onclick={() => createNewItem('directory')}
+        role="menuitem"
+        tabindex="0"
+        onkeydown={(e) => e.key === 'Enter' && createNewItem('directory')}
+      >
         <Folder size="16" />
         <span>New Folder</span>
       </div>
       
       {#if contextMenuType === 'file' || contextMenuType === 'directory'}
-        <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={renameItem}>
+        <div 
+            class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" 
+            onclick={renameItem}
+            role="menuitem"
+            tabindex="0"
+            onkeydown={(e) => e.key === 'Enter' && renameItem()}
+        >
           <span class="text-base">Edit</span>
           <span>Rename</span>
         </div>
-        <div class="px-4 py-3 cursor-pointer text-red-600 dark:text-red-400 flex items-center gap-3 text-sm transition-colors hover:bg-red-50 dark:hover:bg-red-900/20" on:click={handleDelete}>
+        <div 
+            class="px-4 py-3 cursor-pointer text-red-600 dark:text-red-400 flex items-center gap-3 text-sm transition-colors hover:bg-red-50 dark:hover:bg-red-900/20" 
+            onclick={handleDelete}
+            role="menuitem"
+            tabindex="0"
+            onkeydown={(e) => e.key === 'Enter' && handleDelete()}
+        >
           <span class="text-base">Delete</span>
           <span>Delete</span>
         </div>
@@ -540,19 +580,19 @@
           bind:value={newItemName} 
           placeholder="Enter name..." 
           class="w-full mb-6 p-4 border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-white text-black placeholder:text-gray-500 rounded-lg text-base outline-none transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50"
-          on:keydown={(e) => e.key === 'Enter' && handleCreate()}
+          onkeydown={(e) => e.key === 'Enter' && handleCreate()}
           autofocus
         />
         <div class="flex gap-3 justify-end">
           <button 
             class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-all hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105"
-            on:click={() => showCreateDialog = false}
+            onclick={() => showCreateDialog = false}
           >
             Cancel
           </button>
           <button 
             class="px-6 py-3 bg-orange-500 text-black rounded-lg text-sm font-medium transition-all hover:bg-orange-600 hover:scale-105 shadow-lg"
-            on:click={handleCreate}
+            onclick={handleCreate}
           >
             Create
           </button>
@@ -573,19 +613,19 @@
           bind:value={newItemName} 
           placeholder="Enter new name..." 
           class="w-full mb-6 p-4 border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-white text-black placeholder:text-gray-500 rounded-lg text-base outline-none transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-500/50"
-          on:keydown={(e) => e.key === 'Enter' && handleRename()}
+          onkeydown={(e) => e.key === 'Enter' && handleRename()}
           autofocus
         />
         <div class="flex gap-3 justify-end">
           <button 
             class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-all hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105"
-            on:click={() => showRenameDialog = false}
+            onclick={() => showRenameDialog = false}
           >
             Cancel
           </button>
           <button 
             class="px-6 py-3 bg-orange-500 text-black rounded-lg text-sm font-medium transition-all hover:bg-orange-600 hover:scale-105 shadow-lg"
-            on:click={handleRename}
+            onclick={handleRename}
           >
             Rename
           </button>

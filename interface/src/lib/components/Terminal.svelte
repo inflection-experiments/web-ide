@@ -278,9 +278,10 @@
 
 <div class="h-full w-full relative">
     <button 
-        on:click={clearTerminal}
+        onclick={clearTerminal}
         class="absolute top-3 right-3 z-50 bg-background/90 hover:bg-muted border border-border text-foreground text-xs px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 backdrop-blur-sm shadow-lg hover:cursor-pointer"
         title="Clear Terminal"
+        aria-label="Clear Terminal"
     >
         <Trash2 size={14} />
     </button>

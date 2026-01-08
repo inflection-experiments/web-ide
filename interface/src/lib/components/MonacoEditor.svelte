@@ -453,13 +453,14 @@
 
         <!-- Save Button -->
         <button
-          on:click={manualSave}
+          onclick={manualSave}
           class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium transition-all rounded-lg
             {isSaved 
               ? 'text-gray-500 dark:text-stone-400 bg-gray-100 dark:bg-stone-800 cursor-default border border-gray-200 dark:border-stone-700' 
               : 'text-orange-800 dark:text-orange-200 bg-orange-200 dark:bg-orange-900/40 hover:bg-orange-300 dark:hover:bg-orange-900/60 border border-orange-400 dark:border-orange-600'
             }"
           disabled={isSaved}
+          aria-label="Save File"
         >
           <Save size="12" />
           <span>Save</span>
