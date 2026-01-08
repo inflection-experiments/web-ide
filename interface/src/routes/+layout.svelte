@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Snippet } from 'svelte';
     import { onMount } from 'svelte';
+    import { browser } from '$app/environment';
     import socket from '$lib/socket';
     import Terminal from '$lib/components/Terminal.svelte';
     import FileTree from '$lib/components/FileTreeNode.svelte';
@@ -21,8 +22,9 @@
     let isAuthenticated = $derived($auth.isAuthenticated);
     let authLoading = $derived($auth.loading);
     let user = $derived($auth.user);
-
+    
     let currentTheme = $derived(mode.current);
+    // let currentTheme = 'dark';
 
     let minimumLoadingComplete = $state(false);
 
@@ -63,6 +65,7 @@
     }
 
     async function loadFileTree(): Promise<void> {
+        if (!browser) return;
         try {
             const token = localStorage.getItem('auth_token');
             if (!token) {
@@ -95,6 +98,7 @@
         if (!path) return;
         
         try {
+            if (!browser) return;
             const token = localStorage.getItem('auth_token');
             if (!token) {
                 console.error('[ERROR] No auth token for file content request');
