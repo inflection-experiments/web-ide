@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { browser } from '$app/environment';
     import socket from '$lib/socket';
-    import { Trash2 } from 'lucide-svelte';
+    import Icon from '@iconify/svelte';
     import '@xterm/xterm/css/xterm.css';
 
     let terminalRef: HTMLDivElement | null = null;
@@ -282,7 +282,7 @@
         class="absolute top-3 right-3 z-50 bg-background/90 hover:bg-muted border border-border text-foreground text-xs px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 backdrop-blur-sm shadow-lg hover:cursor-pointer"
         title="Clear Terminal"
     >
-        <Trash2 size={14} />
+        <Icon icon="lucide:trash-2" width="14" height="14" />
     </button>
     
     <div bind:this={terminalRef} class="h-full w-full p-2 [&_a]:cursor-pointer [&_a:hover]:text-orange-500"></div>

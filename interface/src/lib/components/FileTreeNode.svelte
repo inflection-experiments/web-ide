@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FolderOpen, Folder, File, ChevronRight } from 'lucide-svelte';
+  import Icon from '@iconify/svelte';
 
   let { tree, onSelect, currentPath = '' } = $props<{
     tree: Record<string, any>;
@@ -412,8 +412,10 @@
         >
           <!-- Expand/Collapse Arrow -->
           <div class="w-4 h-4 flex items-center justify-center">
-            <ChevronRight 
-              size="12"
+            <Icon 
+              icon="lucide:chevron-right"
+              width="12"
+              height="12"
               class="transition-transform duration-200 text-gray-500 dark:text-gray-400 {expandedDirs.has(name) ? 'rotate-90' : ''}"
             />
           </div>
@@ -421,9 +423,9 @@
           <!-- Folder Icon -->
           <div class="w-4 h-4 flex items-center justify-center">
             {#if expandedDirs.has(name)}
-              <FolderOpen size="16" class="text-gray-800 dark:text-orange-400" />
+              <Icon icon="lucide:folder-open" width="16" height="16" class="text-gray-800 dark:text-orange-400" />
             {:else}
-              <Folder size="16" class="text-gray-800 dark:text-orange-400" />
+              <Icon icon="lucide:folder" width="16" height="16" class="text-gray-800 dark:text-orange-400" />
             {/if}
           </div>
           
@@ -480,7 +482,7 @@
         
         <!-- File Icon -->
         <div class="w-4 h-4 flex items-center justify-center">
-          <File size="14" class="text-gray-700 dark:text-gray-300" />
+          <Icon icon="lucide:file" width="14" height="14" class="text-gray-700 dark:text-gray-300" />
         </div>
         
         <!-- File Name -->
@@ -501,11 +503,11 @@
       style="position: fixed; top: {contextMenuPosition.y}px; left: {contextMenuPosition.x}px;"
     >
       <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={() => createNewItem('file')}>
-        <File size="16" />
+        <Icon icon="lucide:file" width="16" height="16" />
         <span>New File</span>
       </div>
       <div class="px-4 py-3 cursor-pointer border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white" on:click={() => createNewItem('directory')}>
-        <Folder size="16" />
+        <Icon icon="lucide:folder" width="16" height="16" />
         <span>New Folder</span>
       </div>
       
