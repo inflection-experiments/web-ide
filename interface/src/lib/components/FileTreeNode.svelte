@@ -1,5 +1,6 @@
 <script lang="ts">
   import { FolderOpen, Folder, File, ChevronRight } from 'lucide-svelte';
+  import { getApiUrl } from '$lib/env';
 
   let { tree, onSelect, currentPath = '' } = $props<{
     tree: Record<string, any>;
@@ -34,7 +35,7 @@
     loadingDirs = new Set(loadingDirs);
     
     try {
-      const url: string = `http://localhost:9000/files/directory?userId=${encodeURIComponent(userId)}&path=${encodeURIComponent(fullPath)}`;
+      const url: string = `${getApiUrl('/files/directory')}?userId=${encodeURIComponent(userId)}&path=${encodeURIComponent(fullPath)}`;
       console.log('[DEBUG] Request URL:', url);
       
       const response: Response = await fetch(url);
@@ -230,7 +231,7 @@
       console.log('[DEBUG] CREATE REQUEST PAYLOAD:');
       console.log(JSON.stringify(requestPayload, null, 2));
       
-      const response: Response = await fetch('http://localhost:9000/files/create', {
+      const response: Response = await fetch(getApiUrl('/files/create'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload)
@@ -302,7 +303,7 @@
       console.log('[DEBUG] RENAME REQUEST PAYLOAD:');
       console.log(JSON.stringify(renamePayload, null, 2));
       
-      const response: Response = await fetch('http://localhost:9000/files/rename', {
+      const response: Response = await fetch(getApiUrl('/files/rename'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(renamePayload)
@@ -356,7 +357,7 @@
       
       console.log('[DEBUG] Delete UserId:', userId);
       
-      const deleteUrl = `http://localhost:9000/files/delete?userId=${userId}&path=${encodeURIComponent(contextMenuPath)}`;
+      const deleteUrl = `${getApiUrl('/files/delete')}?userId=${userId}&path=${encodeURIComponent(contextMenuPath)}`;
       console.log('[DEBUG] DELETE URL:', deleteUrl);
       
       const response: Response = await fetch(deleteUrl, {
@@ -389,7 +390,9 @@
     console.log('[DEBUG] === HANDLE DELETE COMPLETED ===');
   }
 
-  $effect(() => {
+  import { onMount, onDestroy } from 'svelte';
+
+  onMount(() => {
     const handleClick = (): void => {
       if (showContextMenu) {
         showContextMenu = false;

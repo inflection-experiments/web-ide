@@ -11,6 +11,7 @@
     import { auth } from '$lib/stores/auth';
     import { ModeWatcher } from 'mode-watcher';
     import { mode } from 'mode-watcher';
+    import { getApiUrl } from '$lib/env';
     import "../app.css";
 
     interface Props {
@@ -74,7 +75,7 @@
             }
 
             console.log('[DEBUG] Loading file tree with auth token...');
-            const response = await fetch('http://localhost:9000/files', {
+            const response = await fetch(getApiUrl('/files'), {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -109,7 +110,7 @@
             const params = new URLSearchParams({ path: cleanPath });
             
             console.log(`[DEBUG] Loading file content with auth token: ${cleanPath}`);
-            const response = await fetch(`http://localhost:9000/files/content?${params.toString()}`, {
+            const response = await fetch(`${getApiUrl('/files/content')}?${params.toString()}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }  
