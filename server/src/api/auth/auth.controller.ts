@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { AuthService } from '../services/AuthService.js';
-import { ResponseHandler } from '../utils/ResponseHandler.js';
-import { AuthValidator } from '../api/auth/auth.validator.js';
-import { AppError } from '../utils/AppError.js';
+import { AuthService } from '../../services/AuthService.js';
+import { ResponseHandler } from '../../common/ResponseHandler.js';
+import { AuthValidator } from './auth.validator.js';
+import { AppError } from '../../common/AppError.js';
 
 export class AuthController {
     private authService: AuthService;

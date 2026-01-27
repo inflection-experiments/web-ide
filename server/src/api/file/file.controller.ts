@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 // Import the singleton instance
-import { containerService } from '../services/ContainerService.js';
-import { ResponseHandler } from '../utils/ResponseHandler.js';
-import { FileValidator } from '../api/file/file.validator.js';
-import { AppError } from '../utils/AppError.js';
-import { AuthService } from '../services/AuthService.js';
+import { containerService } from '../../services/ContainerService.js';
+import { ResponseHandler } from '../../common/ResponseHandler.js';
+import { FileValidator } from './file.validator.js';
+import { AppError } from '../../common/AppError.js';
+import { AuthService } from '../../services/AuthService.js';
 
 function ultraCleanContent(content: string, filePath: string = ''): string {
     if (!content) return '';

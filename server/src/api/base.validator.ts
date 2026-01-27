@@ -1,6 +1,6 @@
 import Joi from 'joi';
 import { Request } from 'express';
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../common/AppError.js';
 
 export interface BaseSearchFilters {
     OrderBy?: string;

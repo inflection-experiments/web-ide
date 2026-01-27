@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { ResponseHandler } from '../utils/ResponseHandler.js';
+import { ResponseHandler } from '../common/ResponseHandler.js';
 
 export interface AuthRequest extends Request {
     userId: string;

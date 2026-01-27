@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import authRoutes from './auth.routes.js';
-import projectRoutes from './project.routes.js';
-import fileRoutes from './file.routes.js';
-import systemRoutes from './system.routes.js';
+import authRoutes from '../api/auth/auth.routes.js';
+import projectRoutes from '../api/project/project.routes.js';
+import fileRoutes from '../api/file/file.routes.js';
+import systemRoutes from '../api/system/system.routes.js';
 
 const router = Router();
 

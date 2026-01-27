@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { containerService } from '../services/ContainerService.js';
-import { AuthService } from '../services/AuthService.js';
-import { AppDataSource } from '../database/data-source.js';
-import { ResponseHandler } from '../utils/ResponseHandler.js';
-import { SystemValidator } from '../api/system.validator.js';
-import { AppError } from '../utils/AppError.js';
+import { containerService } from '../../services/ContainerService.js';
+import { AuthService } from '../../services/AuthService.js';
+import { AppDataSource } from '../../database/data-source.js';
+import { ResponseHandler } from '../../common/ResponseHandler.js';
+import { SystemValidator } from './system.validator.js';
+import { AppError } from '../../common/AppError.js';
 
 export class SystemController {
     private authService: AuthService;

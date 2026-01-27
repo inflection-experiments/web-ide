@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../common/AppError.js';
 import { config } from '../config/env.config.js';
 
 export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {

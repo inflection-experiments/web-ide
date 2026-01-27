@@ -1,6 +1,6 @@
 import Joi from 'joi';
 import { Request } from 'express';
-import { BaseValidator } from '../api/base.validator.js';
+import { BaseValidator } from '../base.validator.js';
 
 export class SystemValidator extends BaseValidator {
     validatePort(request: Request): number {

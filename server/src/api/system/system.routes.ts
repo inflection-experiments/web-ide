@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { systemController } from '../controllers/system.controller.js';
+import { systemController } from './system.controller.js';
 
 const router = Router();
 

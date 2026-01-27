@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { ProjectService } from '../services/ProjectService.js';
-import { ResponseHandler } from '../utils/ResponseHandler.js';
-import { ProjectValidator } from '../api/project/project.validator.js';
-import { AppError } from '../utils/AppError.js';
+import { ProjectService } from '../../services/ProjectService.js';
+import { ResponseHandler } from '../../common/ResponseHandler.js';
+import { ProjectValidator } from './project.validator.js';
+import { AppError } from '../../common/AppError.js';
 
 export class ProjectController {
     private projectService: ProjectService;
