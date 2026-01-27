@@ -15,24 +15,33 @@ export const API_ENDPOINTS = {
     CREATE: '/api/projects',
   },
   FILES: {
-    LIST: '/files',
-    CONTENT: '/files/content',
-    CREATE: '/files/create',
-    DELETE: '/files/delete',
-    RENAME: '/files/rename',
+    LIST: '/api/files',
+    CONTENT: '/api/files/content',
+    CREATE: '/api/files/create',
+    DELETE: '/api/files/delete',
+    RENAME: '/api/files/rename',
+    DIRECTORY: '/api/files/directory',
   }
 } as const;
+
+// Define a type for standardized responses
+interface ApiResponse<T> {
+  status: 'success' | 'fail' | 'error';
+  data?: T;
+  message?: string;
+}
 
 // Define a type for error responses
 interface ErrorResponse {
   error?: string;
+  message?: string;
 }
 
 // HTTP Client configuration with CORS headers
 export const httpClient = {
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    
+
     const defaultHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -51,22 +60,32 @@ export const httpClient = {
     try {
       console.log(`API Request: ${config.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
-        let errorData: ErrorResponse = {};
+        let errorData: any = {};
         try {
           errorData = await response.json();
         } catch {
           // If JSON parsing fails, use empty object
         }
-        const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+        const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
         console.error(`API Error: ${errorMessage}`);
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      const responseData = await response.json();
       console.log(`API Success: ${config.method || 'GET'} ${url}`);
-      return data;
+
+      // ✅ Standardized Response Unwrapping
+      if (responseData && typeof responseData === 'object' && 'status' in responseData) {
+        const standardRes = responseData as ApiResponse<T>;
+        if (standardRes.status === 'success') {
+          return standardRes.data as T;
+        }
+        throw new Error(standardRes.message || 'API request failed');
+      }
+
+      return responseData;
     } catch (error) {
       console.error(`API request failed for ${endpoint}:`, error);
       throw error;
