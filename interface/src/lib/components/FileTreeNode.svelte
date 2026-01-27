@@ -31,8 +31,7 @@
 
     console.log('[DEBUG] Loading directory contents:', { dirName, fullPath });
     
-    loadingDirs.add(dirName);
-    loadingDirs = new Set(loadingDirs);
+loadingDirs = new Set([...loadingDirs, dirName]);
     
     try {
       console.log('[DEBUG] Loading directory contents via FilesAPI:', fullPath);
@@ -50,14 +49,12 @@
         }
       }
       
-      directoryContents.set(dirName, dirTree);
-      directoryContents = new Map(directoryContents);
+directoryContents = new Map(directoryContents.set(dirName, dirTree));
       
     } catch (error) {
       console.error(`[ERROR] Error loading directory ${fullPath}:`, error);
     } finally {
-      loadingDirs.delete(dirName);
-      loadingDirs = new Set(loadingDirs);
+loadingDirs = new Set([...loadingDirs].filter(d => d !== dirName));
     }
   }
 
@@ -82,12 +79,10 @@
     if (isDir) {
       if (expandedDirs.has(name)) {
         console.log('[DEBUG] Collapsing directory:', name);
-        expandedDirs.delete(name);
-        expandedDirs = new Set(expandedDirs);
+expandedDirs = new Set([...expandedDirs].filter(d => d !== name));
       } else {
         console.log('[DEBUG] Expanding directory:', name);
-        expandedDirs.add(name);
-        expandedDirs = new Set(expandedDirs);
+expandedDirs = new Set([...expandedDirs, name]);
         
         await loadDirectoryContents(name, fullPath);
       }
