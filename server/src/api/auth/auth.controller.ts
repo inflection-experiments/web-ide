@@ -4,13 +4,17 @@ import { ResponseHandler } from '../../common/ResponseHandler.js';
 import { AuthValidator } from './auth.validator.js';
 import { AppError } from '../../common/AppError.js';
 
+import { autoInjectable, inject } from 'tsyringe';
+
+@autoInjectable()
 export class AuthController {
     private authService: AuthService;
-    private validator: AuthValidator;
 
-    constructor() {
-        this.authService = new AuthService();
-        this.validator = new AuthValidator();
+    constructor(
+        @inject(AuthService) authService?: AuthService,
+        private validator: AuthValidator = new AuthValidator()
+    ) {
+        this.authService = authService || new AuthService();
     }
 
     register = async (request: Request, response: Response): Promise<void> => {
@@ -52,7 +56,7 @@ export class AuthController {
             const model = await this.validator.validateLoginRequest(request);
 
             const result = await this.authService.login(
-                model.email,
+                model.usernameOrEmail,
                 model.password
             );
 
@@ -105,5 +109,4 @@ export class AuthController {
     };
 }
 
-// Export singleton instance
-export const authController = new AuthController();
+

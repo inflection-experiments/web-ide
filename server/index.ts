@@ -1,8 +1,11 @@
 import 'reflect-metadata';
 import { Application } from './src/app.js';
 import { logger } from './src/logger/logger.js';
+import { setupInjector } from './src/startup/injector.js';
 
 const app = Application.getInstance();
+// Version Check Log
+logger.info('Starting Server... Version: 1.1 (DI + Auth Fix)');
 
 // Graceful shutdown logic
 const shutdown = async (signal: string) => {
@@ -20,7 +23,8 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 // Start application
-app.initialize()
+setupInjector()
+  .then(() => app.initialize())
   .then(() => app.start())
   .catch((error) => {
     logger.error('Failed to start application', error);

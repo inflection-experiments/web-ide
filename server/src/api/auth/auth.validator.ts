@@ -9,7 +9,7 @@ export interface RegisterModel {
 }
 
 export interface LoginModel {
-    email: string;
+    usernameOrEmail: string;
     password: string;
 }
 
@@ -45,8 +45,12 @@ export class AuthValidator extends BaseValidator {
 
     async validateLoginRequest(request: Request): Promise<LoginModel> {
         const schema = Joi.object({
-            email: Joi.string().email().required(),
-            password: Joi.string().required(),
+            usernameOrEmail: Joi.string().required().messages({
+                'string.empty': 'Username or Email is required',
+            }),
+            password: Joi.string().required().messages({
+                'string.empty': 'Password is required',
+            }),
         });
 
         return this.validate(schema, request.body);
