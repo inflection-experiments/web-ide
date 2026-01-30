@@ -1,5 +1,6 @@
 <script lang="ts">
   import { FolderOpen, Folder, File, ChevronRight } from 'lucide-svelte';
+  import { getApiUrl } from '$lib/env';
 
   let { tree, onSelect, currentPath = '' } = $props<{
     tree: Record<string, any>;
@@ -22,31 +23,22 @@
   let contextMenuType = $state<'file' | 'directory' | 'empty'>('empty');
 
   async function loadDirectoryContents(dirName: string, fullPath: string): Promise<void> {
-    const userId: string | null = localStorage.getItem('userId');
-    if (!userId) {
-      console.error('[ERROR] No userId in localStorage');
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      console.error('[ERROR] No auth token');
       return;
     }
 
     console.log('[DEBUG] Loading directory contents:', { dirName, fullPath });
     
-    loadingDirs.add(dirName);
-    loadingDirs = new Set(loadingDirs);
+loadingDirs = new Set([...loadingDirs, dirName]);
     
     try {
-      const url: string = `http://localhost:9000/files/directory?userId=${encodeURIComponent(userId)}&path=${encodeURIComponent(fullPath)}`;
-      console.log('[DEBUG] Request URL:', url);
+      console.log('[DEBUG] Loading directory contents via FilesAPI:', fullPath);
+      const response = await FilesAPI.getDirectory(fullPath);
       
-      const response: Response = await fetch(url);
-      
-      if (!response.ok) {
-        console.error('[ERROR] Failed to load directory:', response.status, response.statusText);
-        return;
-      }
-      
-      const data: { items: string[] } = await response.json();
-      const items: string[] = data.items || [];
-      console.log('[DEBUG] Directory items received:', items);
+      const items: string[] = response.items || [];
+      console.log('[DEBUG] Directory items received:', items.length);
       
       const dirTree: Record<string, any> = {};
       
@@ -57,16 +49,12 @@
         }
       }
       
-      console.log('[DEBUG] Converted directory tree:', dirTree);
-      
-      directoryContents.set(dirName, dirTree);
-      directoryContents = new Map(directoryContents);
+directoryContents = new Map(directoryContents.set(dirName, dirTree));
       
     } catch (error) {
       console.error(`[ERROR] Error loading directory ${fullPath}:`, error);
     } finally {
-      loadingDirs.delete(dirName);
-      loadingDirs = new Set(loadingDirs);
+loadingDirs = new Set([...loadingDirs].filter(d => d !== dirName));
     }
   }
 
@@ -91,12 +79,10 @@
     if (isDir) {
       if (expandedDirs.has(name)) {
         console.log('[DEBUG] Collapsing directory:', name);
-        expandedDirs.delete(name);
-        expandedDirs = new Set(expandedDirs);
+expandedDirs = new Set([...expandedDirs].filter(d => d !== name));
       } else {
         console.log('[DEBUG] Expanding directory:', name);
-        expandedDirs.add(name);
-        expandedDirs = new Set(expandedDirs);
+expandedDirs = new Set([...expandedDirs, name]);
         
         await loadDirectoryContents(name, fullPath);
       }
@@ -174,104 +160,54 @@
     showContextMenu = false;
   }
 
+  import { FilesAPI } from '$lib/api/files';
+
   async function handleCreate(): Promise<void> {
-    console.log('[DEBUG] HANDLE CREATE FUNCTION CALLED:');
-    console.log('  - newItemName:', `"${newItemName.trim()}"`);
-    console.log('  - newItemType:', newItemType);
-    console.log('  - contextMenuType:', contextMenuType);
-    console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
-    console.log('  - currentPath:', `"${currentPath}"`);
-    
     if (!newItemName.trim()) {
       alert('Please enter a name for the item.');
       return;
     }
     
     let parentPath: string = '';
-    
-    console.log('[DEBUG] DETERMINING PARENT PATH:');
     if (contextMenuType === 'directory') {
       parentPath = contextMenuPath;
-      console.log('  [DEBUG] Context: DIRECTORY - using contextMenuPath as parent');
-      console.log('     parentPath =', `"${parentPath}"`);
     } else if (contextMenuType === 'file') {
       const pathParts: string[] = contextMenuPath.split('/');
       pathParts.pop();
       parentPath = pathParts.join('/');
-      console.log('  [DEBUG] Context: FILE - using file\'s parent directory');
-      console.log('     parentPath =', `"${parentPath}"`);
     } else {
       parentPath = currentPath;
-      console.log('  [DEBUG] Context: EMPTY - using currentPath');
-      console.log('     parentPath =', `"${parentPath}"`);
     }
     
-    console.log('[DEBUG] FINAL PARENT PATH:', `"${parentPath}"`);
-    
     try {
-      const userId: string | null = localStorage.getItem('userId');
+      console.log('[DEBUG] Creating item via FilesAPI...');
+      const response = await FilesAPI.createFileOrDirectory(
+        newItemType,
+        newItemName.trim(),
+        newItemType === 'file' ? '' : undefined,
+        parentPath
+      );
       
-      if (!userId) {
-        console.error('[ERROR] No userId in localStorage');
-        alert('Session expired. Please refresh the page.');
-        return;
-      }
-      
-      console.log('[DEBUG] UserId:', userId);
-      
-      const requestPayload = {
-        userId: userId,
-        path: newItemName.trim(),
-        type: newItemType,
-        content: newItemType === 'file' ? '' : undefined,
-        parentPath: parentPath
-      };
-      
-      console.log('[DEBUG] CREATE REQUEST PAYLOAD:');
-      console.log(JSON.stringify(requestPayload, null, 2));
-      
-      const response: Response = await fetch('http://localhost:9000/files/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload)
-      });
-      
-      console.log('[DEBUG] CREATE Response status:', response.status);
-      const result = await response.json();
-      console.log('[DEBUG] CREATE Server response:', result);
-      
-      if (response.ok) {
+      if (response && (response.success || !response.error)) {
         console.log('[DEBUG] CREATE SUCCESS!');
         showCreateDialog = false;
         
         if (contextMenuType === 'directory') {
-          console.log('[DEBUG] Refreshing parent directory after create...');
           const dirName = contextMenuPath.split('/').pop() || contextMenuPath;
           await loadDirectoryContents(dirName, contextMenuPath);
         }
         
-        console.log('[DEBUG] Triggering main tree refresh after create...');
         await forceRefreshAllExpandedDirs();
         window.dispatchEvent(new CustomEvent('refreshFileTree'));
-        
-      } else {
-        console.error('[ERROR] CREATE FAILED:', result.error);
-        alert(`Failed to create item: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('[ERROR] CREATE Network error:', error);
-      alert('Network error occurred.');
+      console.error('[ERROR] CREATE failed:', error);
+      alert(`Failed to create item: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   async function handleRename(): Promise<void> {
-    console.log('[DEBUG] === HANDLE RENAME STARTED ===');
-    console.log('  - oldItemName:', `"${oldItemName}"`);
-    console.log('  - newItemName:', `"${newItemName.trim()}"`);
-    console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
-    
     if (!newItemName.trim() || newItemName.trim() === oldItemName) {
-      console.log('[DEBUG] Rename cancelled - no change in name');
       return;
     }
     
@@ -279,117 +215,49 @@
     pathParts[pathParts.length - 1] = newItemName.trim();
     const newPath: string = pathParts.join('/');
     
-    console.log('[DEBUG] RENAME PATH CALCULATION:');
-    console.log('  - oldPath:', `"${contextMenuPath}"`);
-    console.log('  - newPath:', `"${newPath}"`);
-    console.log('  - pathParts:', pathParts);
-    
     try {
-      const userId: string | null = localStorage.getItem('userId');
-      if (!userId) {
-        console.error('[ERROR] No userId for rename');
-        return;
-      }
+      console.log('[DEBUG] Renaming via FilesAPI...');
+      const response = await FilesAPI.renameFileOrDirectory(contextMenuPath, newPath);
       
-      console.log('[DEBUG] Rename UserId:', userId);
-      
-      const renamePayload = {
-        userId,
-        oldPath: contextMenuPath,
-        newPath: newPath
-      };
-      
-      console.log('[DEBUG] RENAME REQUEST PAYLOAD:');
-      console.log(JSON.stringify(renamePayload, null, 2));
-      
-      const response: Response = await fetch('http://localhost:9000/files/rename', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(renamePayload)
-      });
-      
-      console.log('[DEBUG] RENAME Response status:', response.status);
-      const result = await response.json();
-      console.log('[DEBUG] RENAME Server response:', result);
-      
-      if (response.ok) {
-        console.log('[DEBUG] RENAME SUCCESS!');
+      if (response && (response.success || !response.error)) {
         showRenameDialog = false;
-        
-        console.log('[DEBUG] FORCE REFRESHING ALL EXPANDED DIRS AFTER RENAME...');
         await forceRefreshAllExpandedDirs();
-        
-        console.log('[DEBUG] Triggering main tree refresh after rename...');
         window.dispatchEvent(new CustomEvent('refreshFileTree'));
-        
-      } else {
-        console.error('[ERROR] RENAME FAILED:', result.error || 'Unknown error');
-        alert('Failed to rename item: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('[ERROR] RENAME Network error:', error);
-      alert('Network error during rename.');
+      console.error('[ERROR] RENAME failed:', error);
+      alert(`Failed to rename: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    console.log('[DEBUG] === HANDLE RENAME COMPLETED ===');
   }
 
   async function handleDelete(): Promise<void> {
     const itemName: string = contextMenuPath.split('/').pop() || contextMenuPath;
     
-    console.log('[DEBUG] === HANDLE DELETE STARTED ===');
-    console.log('  - itemName:', `"${itemName}"`);
-    console.log('  - contextMenuPath:', `"${contextMenuPath}"`);
-    console.log('  - contextMenuType:', contextMenuType);
-    
     if (!confirm(`Are you sure you want to delete "${itemName}"?`)) {
-      console.log('[DEBUG] Delete cancelled by user');
       return;
     }
     
     try {
-      const userId: string | null = localStorage.getItem('userId');
-      if (!userId) {
-        console.error('[ERROR] No userId for delete');
-        return;
-      }
+      console.log('[DEBUG] Deleting via FilesAPI...');
+      const response = await FilesAPI.deleteFileOrDirectory(
+        contextMenuPath, 
+        contextMenuType === 'directory' ? 'directory' : 'file'
+      );
       
-      console.log('[DEBUG] Delete UserId:', userId);
-      
-      const deleteUrl = `http://localhost:9000/files/delete?userId=${userId}&path=${encodeURIComponent(contextMenuPath)}`;
-      console.log('[DEBUG] DELETE URL:', deleteUrl);
-      
-      const response: Response = await fetch(deleteUrl, {
-        method: 'DELETE'
-      });
-      
-      console.log('[DEBUG] DELETE Response status:', response.status);
-      const result = await response.json();
-      console.log('[DEBUG] DELETE Server response:', result);
-      
-      if (response.ok) {
-        console.log('[DEBUG] DELETE SUCCESS!');
+      if (response && (response.success || !response.error)) {
         showContextMenu = false;
-        
-        console.log('[DEBUG] FORCE REFRESHING ALL EXPANDED DIRS AFTER DELETE...');
         await forceRefreshAllExpandedDirs();
-        
-        console.log('[DEBUG] Triggering main tree refresh after delete...');
         window.dispatchEvent(new CustomEvent('refreshFileTree'));
-        
-      } else {
-        console.error('[ERROR] DELETE FAILED:', result.error || 'Unknown error');
-        alert('Failed to delete item: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('[ERROR] DELETE Network error:', error);
-      alert('Network error during delete.');
+      console.error('[ERROR] DELETE failed:', error);
+      alert(`Failed to delete: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
-    console.log('[DEBUG] === HANDLE DELETE COMPLETED ===');
   }
 
-  $effect(() => {
+  import { onMount, onDestroy } from 'svelte';
+
+  onMount(() => {
     const handleClick = (): void => {
       if (showContextMenu) {
         showContextMenu = false;

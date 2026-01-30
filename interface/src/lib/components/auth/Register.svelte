@@ -1,62 +1,55 @@
 <script lang="ts">
   import { auth } from '$lib/stores/auth';
   import { createEventDispatcher } from 'svelte';
+  import { FormValidator } from '$lib/utils/validation';
 
   const dispatch = createEventDispatcher();
 
-  let username = '';
-  let email = '';
-  let password = '';
-  let confirmPassword = '';
-  let errorMessage = '';
-  let successMessage = '';
-  let showPassword = false;
-  let showConfirmPassword = false;
-  let registrationStep: 'form' | 'loading' | 'success' | 'redirecting' = 'form';
+  // State with Runes
+  let username = $state('');
+  let email = $state('');
+  let password = $state('');
+  let confirmPassword = $state('');
+  let errors = $state<Record<string, string>>({});
+  let successMessage = $state('');
+  let showPassword = $state(false);
+  let showConfirmPassword = $state(false);
+  let registrationStep = $state<'form' | 'loading' | 'success' | 'redirecting'>('form');
 
-  // Add these refs for direct DOM manipulation if needed
+  // DOM refs
   let passwordInput: HTMLInputElement;
   let confirmPasswordInput: HTMLInputElement;
 
+  // Derived state
   let loading = $derived($auth.loading);
-  let passwordsMatch = $derived(password === confirmPassword);
+  
+  // Real-time validation
+  let usernameValidation = $derived(FormValidator.validateUsername(username));
+  let emailValidation = $derived(FormValidator.validateEmail(email));
+  let passwordValidation = $derived(FormValidator.validatePassword(password));
+  let passwordMatchValidation = $derived(FormValidator.validatePasswordMatch(password, confirmPassword));
+
+  let isFormValid = $derived(
+    usernameValidation.isValid &&
+    emailValidation.isValid &&
+    passwordValidation.isValid &&
+    passwordMatchValidation.isValid
+  );
 
   async function handleSubmit() {
-    errorMessage = '';
+    errors = {};
     successMessage = '';
-    registrationStep = 'loading';
     
-    // Validation
-    if (!username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      errorMessage = 'Please fill in all fields';
-      registrationStep = 'form';
+    // Final check before submission
+    if (!isFormValid) {
+      if (!usernameValidation.isValid) errors.username = usernameValidation.errors[0];
+      if (!emailValidation.isValid) errors.email = emailValidation.errors[0];
+      if (!passwordValidation.isValid) errors.password = passwordValidation.errors[0];
+      if (!passwordMatchValidation.isValid) errors.confirmPassword = passwordMatchValidation.errors[0];
       return;
     }
 
-    if (username.trim().length < 3) {
-      errorMessage = 'Username must be at least 3 characters long';
-      registrationStep = 'form';
-      return;
-    }
-
-    if (!isValidEmail(email.trim())) {
-      errorMessage = 'Please enter a valid email address';
-      registrationStep = 'form';
-      return;
-    }
-
-    if (password.length < 6) {
-      errorMessage = 'Password must be at least 6 characters long';
-      registrationStep = 'form';
-      return;
-    }
-
-    if (!passwordsMatch) {
-      errorMessage = 'Passwords do not match';
-      registrationStep = 'form';
-      return;
-    }
-
+    registrationStep = 'loading';
     console.log('Attempting registration...', { username, email });
     const result = await auth.register(username.trim(), email.trim(), password);
     
@@ -82,7 +75,7 @@
       }, 2000);
     } else {
       registrationStep = 'form';
-      errorMessage = result.error || 'Registration failed';
+      errors.general = result.error || 'Registration failed';
     }
   }
 
@@ -92,25 +85,17 @@
 
   function togglePasswordVisibility() {
     showPassword = !showPassword;
-    // Force DOM update
+    // Force DOM update not strictly needed with Runes/bind but good safety
     if (passwordInput) {
       passwordInput.type = showPassword ? 'text' : 'password';
     }
-    console.log('Password visibility toggled:', showPassword);
   }
 
   function toggleConfirmPasswordVisibility() {
     showConfirmPassword = !showConfirmPassword;
-    // Force DOM update
     if (confirmPasswordInput) {
       confirmPasswordInput.type = showConfirmPassword ? 'text' : 'password';
     }
-    console.log('Confirm password visibility toggled:', showConfirmPassword);
-  }
-
-  function isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
   }
 
   function handleKeyPress(event: KeyboardEvent) {
@@ -170,7 +155,7 @@
       <div class="md:w-1/2 p-12 flex flex-col justify-center bg-gradient-to-t from-neutral-950 to-neutral-900">
         
         {#if registrationStep === 'form'}
-          <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+          <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-6">
             
             <!-- Username Input -->
             <div class="space-y-3">
@@ -182,15 +167,18 @@
                 type="text"
                 bind:value={username}
                 disabled={loading}
-                on:keypress={handleKeyPress}
+                onkeypress={handleKeyPress}
                 autocomplete="username"
                 class="block w-full px-3 py-2 bg-white border-0 rounded-md text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 style="font-family: 'Epilogue', sans-serif;"
                 placeholder="your_username"
                 required
               />
-              {#if username.trim() && username.trim().length < 3}
-                <p class="text-xs text-yellow-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Username must be at least 3 characters</p>
+              {#if username && !usernameValidation.isValid}
+                <p class="text-xs text-yellow-400 mt-1" style="font-family: 'Epilogue', sans-serif;">{usernameValidation.errors[0]}</p>
+              {/if}
+              {#if errors.username}
+                 <p class="text-xs text-red-400 mt-1" style="font-family: 'Epilogue', sans-serif;">{errors.username}</p>
               {/if}
             </div>
 
@@ -204,15 +192,18 @@
                 type="email"
                 bind:value={email}
                 disabled={loading}
-                on:keypress={handleKeyPress}
+                onkeypress={handleKeyPress}
                 autocomplete="email"
                 class="block w-full px-3 py-2 bg-white border-0 rounded-md text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 style="font-family: 'Epilogue', sans-serif;"
                 placeholder="you@example.com"
                 required
               />
-              {#if email.trim() && !isValidEmail(email.trim())}
-                <p class="text-xs text-yellow-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Please enter a valid email address</p>
+              {#if email && !emailValidation.isValid}
+                <p class="text-xs text-yellow-400 mt-1" style="font-family: 'Epilogue', sans-serif;">{emailValidation.errors[0]}</p>
+              {/if}
+              {#if errors.email}
+                 <p class="text-xs text-red-400 mt-1" style="font-family: 'Epilogue', sans-serif;">{errors.email}</p>
               {/if}
             </div>
 
@@ -228,7 +219,7 @@
                   type="password"
                   bind:value={password}
                   disabled={loading}
-                  on:keypress={handleKeyPress}
+                  onkeypress={handleKeyPress}
                   autocomplete="new-password"
                   class="block w-full px-3 py-2 pr-12 bg-white border-0 rounded-md text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   style="font-family: 'Epilogue', sans-serif;"
@@ -237,7 +228,7 @@
                 />
                 <button
                   type="button"
-                  on:click={togglePasswordVisibility}
+                  onclick={togglePasswordVisibility}
                   disabled={loading}
                   class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800 disabled:opacity-50 transition-colors cursor-pointer"
                 >
@@ -255,8 +246,11 @@
                   {/if}
                 </button>
               </div>
-              {#if password && password.length < 6}
-                <p class="text-xs text-yellow-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Password must be at least 6 characters</p>
+              {#if password && !passwordValidation.isValid}
+                <p class="text-xs text-yellow-400 mt-1" style="font-family: 'Epilogue', sans-serif;">{passwordValidation.errors[0]}</p>
+              {/if}
+              {#if errors.password}
+                 <p class="text-xs text-red-400 mt-1" style="font-family: 'Epilogue', sans-serif;">{errors.password}</p>
               {/if}
             </div>
 
@@ -272,7 +266,7 @@
                   type="password"
                   bind:value={confirmPassword}
                   disabled={loading}
-                  on:keypress={handleKeyPress}
+                  onkeypress={handleKeyPress}
                   autocomplete="new-password"
                   class="block w-full px-3 py-2 pr-12 bg-white border-0 rounded-md text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   style="font-family: 'Epilogue', sans-serif;"
@@ -281,7 +275,7 @@
                 />
                 <button
                   type="button"
-                  on:click={toggleConfirmPasswordVisibility}
+                  onclick={toggleConfirmPasswordVisibility}
                   disabled={loading}
                   class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-800 disabled:opacity-50 transition-colors cursor-pointer"
                 >
@@ -299,25 +293,25 @@
                   {/if}
                 </button>
               </div>
-              {#if confirmPassword && !passwordsMatch}
+              {#if confirmPassword && !passwordMatchValidation.isValid}
                 <p class="text-xs text-red-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Passwords do not match</p>
-              {:else if confirmPassword && passwordsMatch}
+              {:else if confirmPassword && passwordMatchValidation.isValid}
                 <p class="text-xs text-green-400 mt-1" style="font-family: 'Epilogue', sans-serif;">Passwords match ✓</p>
               {/if}
             </div>
 
-            {#if errorMessage}
+            {#if errors.general}
               <div class="bg-red-900/50 border border-red-600/50 text-red-200 px-4 py-3 rounded-md flex items-center space-x-2">
                 <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <span class="text-sm" style="font-family: 'Epilogue', sans-serif;">{errorMessage}</span>
+                <span class="text-sm" style="font-family: 'Epilogue', sans-serif;">{errors.general}</span>
               </div>
             {/if}
 
             <button
               type="submit"
-              disabled={loading || !passwordsMatch}
+              disabled={loading || !isFormValid}
               class="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-700 text-white font-medium py-3 px-4 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-neutral-950 disabled:cursor-not-allowed"
               style="font-family: 'Epilogue', sans-serif;"
             >
@@ -335,7 +329,7 @@
               <span class="text-gray-400 text-sm" style="font-family: 'Epilogue', sans-serif;">Already have an account? </span>
               <button
                 type="button"
-                on:click={switchToLogin}
+                onclick={switchToLogin}
                 disabled={loading}
                 class="text-orange-500 hover:text-orange-400 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors underline"
                 style="font-family: 'Epilogue', sans-serif;"

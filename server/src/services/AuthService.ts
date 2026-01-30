@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import { AppDataSource } from '../database/data-source.js';
 import { User } from '../entities/User.entity.js';
 
+import { injectable } from 'tsyringe';
+
 /**
  * WHAT THIS DOES:
  * - Handles user registration and login
@@ -11,6 +13,7 @@ import { User } from '../entities/User.entity.js';
  * - Validates user credentials
  * - Manages user data retrieval
  */
+@injectable()
 export class AuthService {
   private userRepository = AppDataSource.getRepository(User);
 

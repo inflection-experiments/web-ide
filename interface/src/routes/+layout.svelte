@@ -11,6 +11,8 @@
     import { auth } from '$lib/stores/auth';
     import { ModeWatcher } from 'mode-watcher';
     import { mode } from 'mode-watcher';
+    import { FilesAPI } from '$lib/api/files';
+    import { getApiUrl } from '$lib/env';
     import "../app.css";
 
     interface Props {
@@ -73,18 +75,8 @@
                 return;
             }
 
-            console.log('[DEBUG] Loading file tree with auth token...');
-            const response = await fetch('http://localhost:9000/files', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
+            console.log('[DEBUG] Loading file tree via FilesAPI...');
+            const data = await FilesAPI.getFileTree();
             tree = data.tree || {};
             loading = false;
             console.log('[DEBUG] File tree loaded successfully');
@@ -106,20 +98,9 @@
             }
 
             const cleanPath = cleanFilePath(path);
-            const params = new URLSearchParams({ path: cleanPath });
+            console.log(`[DEBUG] Loading file content via FilesAPI: ${cleanPath}`);
             
-            console.log(`[DEBUG] Loading file content with auth token: ${cleanPath}`);
-            const response = await fetch(`http://localhost:9000/files/content?${params.toString()}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }  
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
+            const data = await FilesAPI.getFileContent(cleanPath);
             let content = data.content || '';
             
             if (cleanPath.endsWith('.json') && content.trim()) {

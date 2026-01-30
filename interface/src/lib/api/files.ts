@@ -10,6 +10,10 @@ export interface FileTreeResponse {
   tree: FileTreeItem;
 }
 
+export interface DirectoryResponse {
+  items: string[];
+}
+
 export interface FileContentResponse {
   content: string;
 }
@@ -33,36 +37,43 @@ export interface RenameResponse {
 
 export class FilesAPI {
   /**
-   * ✅ FIXED: Load file tree using socket with real user authentication
+   * ✅ FIXED: Load file tree using standardized API with authentication
    */
-  static async getFileTree(userId?: string): Promise<FileTreeResponse> {
-    // ✅ USE SOCKET ID FOR AUTHENTICATED USER IDENTIFICATION
-    const socketId = socket.id || userId;
-    
-    if (!socketId) {
-      console.warn('⚠️ FilesAPI: No socket connection - files may not persist');
-    }
-    
-    const params = socketId ? `?userId=${encodeURIComponent(socketId)}` : '';
-    return httpClient.request<FileTreeResponse>(`${API_ENDPOINTS.FILES.LIST}${params}`);
+  static async getFileTree(): Promise<FileTreeResponse> {
+    const token = localStorage.getItem('auth_token');
+    return httpClient.request<FileTreeResponse>(API_ENDPOINTS.FILES.LIST, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
   }
 
   /**
-   * ✅ FIXED: Load file content using authenticated socket
+   * ✅ FIXED: Load file content using authenticated request
    */
-  static async getFileContent(path: string, userId: string): Promise<FileContentResponse> {
-    // ✅ USE SOCKET ID FOR AUTHENTICATED USER IDENTIFICATION
-    const socketId = socket.id || userId;
-    
-    if (!socketId) {
-      console.warn('⚠️ FilesAPI: No socket connection - files may not persist');
-    }
-    
-    const params = new URLSearchParams({
-      path: path,
-      userId: socketId || userId
+  static async getFileContent(path: string): Promise<FileContentResponse> {
+    const token = localStorage.getItem('auth_token');
+    const params = new URLSearchParams({ path });
+
+    return httpClient.request<FileContentResponse>(`${API_ENDPOINTS.FILES.CONTENT}?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-    return httpClient.request<FileContentResponse>(`${API_ENDPOINTS.FILES.CONTENT}?${params.toString()}`);
+  }
+
+  /**
+   * ✅ ADDED: Load directory items using authenticated request
+   */
+  static async getDirectory(path: string): Promise<DirectoryResponse> {
+    const token = localStorage.getItem('auth_token');
+    const params = new URLSearchParams({ path });
+
+    return httpClient.request<DirectoryResponse>(`${API_ENDPOINTS.FILES.DIRECTORY}?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
   }
 
   /**
@@ -70,7 +81,7 @@ export class FilesAPI {
    */
   static saveFile(path: string, content: string): void {
     console.log('💾 FilesAPI: Saving file with authenticated user for persistence:', path);
-    
+
     if (!socket.connected) {
       console.error('❌ FilesAPI: Socket not connected - file may not persist across logins');
       return;
@@ -81,7 +92,7 @@ export class FilesAPI {
   }
 
   /**
-   * ✅ FIXED: Create file/directory using authenticated socket - NO MORE 'any' TYPE
+   * ✅ FIXED: Create file/directory using authenticated request
    */
   static async createFileOrDirectory(
     type: 'file' | 'directory',
@@ -89,20 +100,14 @@ export class FilesAPI {
     content: string = '',
     parentPath: string = ''
   ): Promise<CreateFileResponse> {
-    console.log('📁 FilesAPI: Creating', type, 'with authenticated user:', path);
-
-    // ✅ USE SOCKET ID FOR AUTHENTICATED USER IDENTIFICATION
-    const socketId = socket.id;
-    
-    if (!socketId) {
-      console.error('❌ FilesAPI: Socket not connected - creation may fail');
-      throw new Error('Socket not connected - please refresh the page');
-    }
+    const token = localStorage.getItem('auth_token');
 
     return httpClient.request<CreateFileResponse>(`${API_ENDPOINTS.FILES.CREATE}`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
-        userId: socketId,
         type,
         path,
         content,
@@ -112,48 +117,40 @@ export class FilesAPI {
   }
 
   /**
-   * ✅ ADDED: Delete file/directory with proper typing
+   * ✅ ADDED: Delete file/directory with proper typing and auth
    */
   static async deleteFileOrDirectory(
     path: string,
     type: 'file' | 'directory'
   ): Promise<DeleteResponse> {
-    const socketId = socket.id;
-    
-    if (!socketId) {
-      throw new Error('Socket not connected - please refresh the page');
-    }
-
-    const params = new URLSearchParams({
-      userId: socketId,
-      path: path,
-      type: type
-    });
+    const token = localStorage.getItem('auth_token');
+    const params = new URLSearchParams({ path, type });
 
     return httpClient.request<DeleteResponse>(`${API_ENDPOINTS.FILES.DELETE}?${params.toString()}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
   }
 
   /**
-   * ✅ ADDED: Rename file/directory with proper typing
+   * ✅ ADDED: Rename file/directory with proper typing and auth
    */
   static async renameFileOrDirectory(
     oldPath: string,
     newPath: string
   ): Promise<RenameResponse> {
-    const socketId = socket.id;
-    
-    if (!socketId) {
-      throw new Error('Socket not connected - please refresh the page');
-    }
+    const token = localStorage.getItem('auth_token');
 
     return httpClient.request<RenameResponse>(`${API_ENDPOINTS.FILES.RENAME}`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
-        userId: socketId,
-        oldPath: oldPath,
-        newPath: newPath
+        oldPath,
+        newPath
       }),
     });
   }
@@ -164,26 +161,26 @@ export class FilesAPI {
   static cleanFilePath(path: string): string {
     if (!path) return '';
     let cleanPath = String(path);
-    
+
     // Remove control characters using character code filtering (ESLint-safe approach)
     cleanPath = cleanPath.split('').filter(char => {
       const code = char.charCodeAt(0);
       // Remove characters 0-31 and 127-159 (control characters)
       return !(code <= 31 || (code >= 127 && code <= 159));
     }).join('');
-    
+
     // Remove leading/trailing quotes and whitespace
     cleanPath = cleanPath.replace(/^['"\s]+|['"\s]+$/g, '');
-    
+
     // Remove workspace prefix
     cleanPath = cleanPath.replace(/^workspace[/\\]/, '');
-    
+
     // Remove leading ./ or .\
     cleanPath = cleanPath.replace(/^\.[\\/]+/g, '');
-    
+
     // Remove leading slashes or backslashes
     cleanPath = cleanPath.replace(/^[\\/]+/, '');
-    
+
     return cleanPath;
   }
 }

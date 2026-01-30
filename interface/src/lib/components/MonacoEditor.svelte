@@ -1,72 +1,141 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { createEventDispatcher } from 'svelte';
   import { browser } from '$app/environment';
   import { ChevronRight, Save, AlertTriangle, CheckCircle2, FileText, FileCode, Palette, Globe, FileJson, FileType, Braces, Coffee, Settings, FolderOpen } from 'lucide-svelte';
 
-  export let selectedFile: string = '';
-  export let selectedFileContent: string = '';
-  export let getFileMode: ((args: { selectedFile: string }) => string) | undefined = undefined;
-  export let onContentSave: ((path: string, content: string) => void) | undefined = undefined;
-  export let theme: 'light' | 'dark' = 'dark';
+  // Props
+  let {
+    selectedFile = $bindable(''),
+    selectedFileContent = $bindable(''),
+    getFileMode = undefined,
+    onContentSave = undefined,
+    theme = 'dark'
+  } = $props<{
+    selectedFile?: string;
+    selectedFileContent?: string;
+    getFileMode?: (args: { selectedFile: string }) => string;
+    onContentSave?: (path: string, content: string) => void;
+    theme?: 'light' | 'dark';
+  }>();
 
-  let code: string = '';
-  let lastContent: string = '';
-  let monaco: any;
-  let editor: any;
+  // State
+  let code = $state('');
+  let lastContent = $state('');
+  let monaco = $state<any>(undefined);
+  let editor = $state<any>(undefined);
   let editorContainer: HTMLDivElement;
   let saveTimeout: ReturnType<typeof setTimeout> | null = null;
   let resizeObserver: ResizeObserver;
-  const dispatch = createEventDispatcher();
+  // Cleanup functions registry
+  let cleanupFunctions: Array<() => void> = [];
 
-  $: isSaved = code === selectedFileContent && code !== "";
-  $: pathParts = selectedFile ? selectedFile.split('/').filter(Boolean) : [];
+  // Derived values
+  const isSaved = $derived(code === selectedFileContent && code !== "");
+  const pathParts = $derived(selectedFile ? selectedFile.split('/').filter(Boolean) : []);
 
-  // MANUAL SAVE FUNCTION
-  function manualSave() {
+  // Lifecycle
+  onMount(() => {
+    if (!browser) return;
+
+    // Initialize editor
+    initializeEditor();
+
+    // Keyboard handler
+    const keyHandler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        manualSave();
+      }
+    };
+    document.addEventListener('keydown', keyHandler, true);
+    cleanupFunctions.push(() => document.removeEventListener('keydown', keyHandler, true));
+  });
+
+  onDestroy(() => {
     if (!browser) return;
     
-    console.log(`[DEBUG] Manual save triggered for: ${selectedFile}`);
+    // Run all cleanup functions
+    cleanupFunctions.forEach(fn => fn());
     
-    if (!selectedFile || code === undefined || code === null) {
-      console.log('[DEBUG] Cannot save - no file selected or no code');
-      return;
+    if (resizeObserver) resizeObserver.disconnect();
+    
+    if (editor) {
+      if (editor.getModel()) {
+        editor.getModel().dispose();
+      }
+      editor.dispose();
     }
     
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-      saveTimeout = null;
-      console.log('[DEBUG] Cleared auto-save timeout');
-    }
-    
-    let cleanCode = String(code || '');
-    const originalLength = cleanCode.length;
-    cleanCode = cleanCode.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-    cleanCode = cleanCode.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
-    
-    console.log(`[DEBUG] Manual save - Original: ${originalLength}, Cleaned: ${cleanCode.length}`);
-    
-    selectedFileContent = cleanCode;
-    
-    if (onContentSave) {
-      onContentSave(selectedFile, cleanCode);
-      console.log(`[DEBUG] Manual save - onContentSave called`);
-    }
-    
-    dispatch('save', { path: selectedFile, content: cleanCode });
-    console.log(`[DEBUG] Manual save - Event dispatched`);
-  }
+    if (saveTimeout) clearTimeout(saveTimeout);
+  });
 
-  // KEYBOARD SHORTCUTS
-  function handleKeyDown(event: KeyboardEvent) {
-    if (!browser) return;
-    
-    if ((event.ctrlKey || event.metaKey) && event.key === 's') {
-      event.preventDefault();
-      event.stopPropagation();
-      console.log('[DEBUG] Ctrl+S detected, triggering save');
-      manualSave();
-      return false;
+  async function initializeEditor() {
+    try {
+      console.log('[DEBUG] Initializing Monaco Editor...');
+      monaco = await loadMonacoFromCDN();
+      
+      if (!monaco) {
+        console.error('Monaco failed to load');
+        createFallbackEditor();
+        return;
+      }
+
+      if (!editorContainer) return;
+
+      editor = monaco.editor.create(editorContainer, {
+        value: '',
+        language: getEditorLanguage(selectedFile || '', getFileMode),
+        theme: theme === 'dark' ? 'vs-dark' : 'vs',
+        automaticLayout: false,
+        wordWrap: 'on',
+        wordWrapColumn: 120,
+        scrollbar: {
+          vertical: 'hidden',
+          horizontal: 'hidden',
+          verticalScrollbarSize: 0,
+          horizontalScrollbarSize: 0,
+          useShadows: false,
+          verticalHasArrows: false,
+          horizontalHasArrows: false
+        },
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        fontSize: 14,
+        lineNumbers: 'on',
+        renderWhitespace: 'selection',
+        formatOnPaste: true,
+        formatOnType: true,
+        tabSize: 2,
+        insertSpaces: true,
+        detectIndentation: false,
+        padding: { top: 0, bottom: 0 }
+      });
+
+      // Register save command
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, manualSave);
+
+      // Content change handler
+      editor.onDidChangeModelContent(() => {
+        const newCode = editor.getValue();
+        if (newCode !== code) {
+          code = newCode;
+          scheduleAutoSave();
+        }
+      });
+
+      // Resize observer
+      resizeObserver = new ResizeObserver(() => {
+        if (editor) {
+          try { editor.layout(); } catch (e) {}
+        }
+      });
+      resizeObserver.observe(editorContainer);
+      
+      console.log('[DEBUG] Monaco initialized successfully');
+
+    } catch (error) {
+      console.error('[ERROR] Failed to initialize Monaco Editor:', error);
+      createFallbackEditor();
     }
   }
 
@@ -124,98 +193,8 @@
     });
   }
 
-  onMount(async () => {
-    if (!browser) return;
-    
-    console.log('[DEBUG] MonacoEditor mounting');
-    
-    document.addEventListener('keydown', handleKeyDown, true);
-    
-    try {
-      monaco = await loadMonacoFromCDN();
-      
-      if (!monaco) {
-        console.error('Monaco failed to load');
-        return;
-      }
-      
-      console.log('[DEBUG] Monaco loaded successfully');
-      
-      editor = monaco.editor.create(editorContainer, {
-        value: '',
-        language: getEditorLanguage(selectedFile, getFileMode),
-        theme: theme === 'dark' ? 'vs-dark' : 'vs',
-        automaticLayout: false,
-        wordWrap: 'on',
-        wordWrapColumn: 120,
-        scrollbar: {
-          vertical: 'hidden',
-          horizontal: 'hidden',
-          verticalScrollbarSize: 0,
-          horizontalScrollbarSize: 0,
-          useShadows: false,
-          verticalHasArrows: false,
-          horizontalHasArrows: false
-        },
-        minimap: { enabled: false },
-        scrollBeyondLastLine: false,
-        fontSize: 14,
-        lineNumbers: 'on',
-        renderWhitespace: 'selection',
-        formatOnPaste: true,
-        formatOnType: true,
-        tabSize: 2,
-        insertSpaces: true,
-        detectIndentation: false,
-        padding: { top: 0, bottom: 0 }
-      });
-
-      console.log('[DEBUG] Monaco editor created');
-
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-        console.log('[DEBUG] Monaco keybinding triggered');
-        manualSave();
-      });
-
-      editor.addAction({
-        id: 'save-file',
-        label: 'Save File',
-        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
-        run: () => {
-          console.log('[DEBUG] Monaco action triggered');
-          manualSave();
-        }
-      });
-
-      editor.onDidChangeModelContent(() => {
-        const newCode = editor.getValue();
-        if (newCode !== code) {
-          code = newCode;
-          console.log('[DEBUG] Editor content changed, length:', code.length);
-        }
-      });
-
-      resizeObserver = new ResizeObserver(() => {
-        if (editor) {
-          try {
-            editor.layout();
-          } catch (e) {
-            // Ignore layout errors
-          }
-        }
-      });
-      resizeObserver.observe(editorContainer);
-      
-      console.log('[DEBUG] Monaco setup complete');
-      
-    } catch (error) {
-      console.error('[ERROR] Failed to initialize Monaco Editor:', error);
-      createFallbackEditor();
-    }
-  });
-
   function createFallbackEditor() {
-    if (!browser) return;
+    if (!browser || !editorContainer) return;
     
     console.log('[DEBUG] Creating fallback editor');
     
@@ -242,15 +221,23 @@
       textarea.style.setProperty('scrollbar-width', 'none');
       textarea.style.setProperty('-webkit-scrollbar', 'none');
       
-      textarea.addEventListener('input', (e) => {
+      const inputHandler = (e: Event) => {
         code = (e.target as HTMLTextAreaElement).value;
-      });
+      };
+      textarea.addEventListener('input', inputHandler);
       
-      textarea.addEventListener('keydown', (e) => {
+      const keyHandler = (e: KeyboardEvent) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
           e.preventDefault();
           manualSave();
         }
+      };
+      textarea.addEventListener('keydown', keyHandler);
+      
+      // Store cleanup for fallback
+      cleanupFunctions.push(() => {
+          textarea.removeEventListener('input', inputHandler);
+          textarea.removeEventListener('keydown', keyHandler);
       });
       
       editor = {
@@ -262,96 +249,99 @@
         layout: () => {},
         dispose: () => {},
         addCommand: () => {},
-        addAction: () => {}
+        addAction: () => {},
+        getModel: () => null
       };
     }
   }
 
-  onDestroy(() => {
-    if (!browser) return;
-    
-    document.removeEventListener('keydown', handleKeyDown, true);
-    if (resizeObserver) resizeObserver.disconnect();
-    if (editor && editor.dispose) {
+  // Effect 1: Theme updates
+  $effect(() => {
+    if (browser && monaco && editor && editor.updateOptions) {
       try {
-        editor.dispose();
-      } catch (e) {
-        // Ignore disposal errors
-      }
+        monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs');
+      } catch (e) {}
     }
-    if (saveTimeout) clearTimeout(saveTimeout);
   });
 
-  // THEME UPDATE
-  $: if (browser && monaco && editor && editor.updateOptions) {
-    updateTheme();
-  }
-
-  function updateTheme() {
-    if (!browser || !monaco || !editor) return;
-    
-    try {
-      monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs');
-      console.log(`[DEBUG] Theme updated to: ${theme}`);
-    } catch (error) {
-      console.error('[ERROR] Failed to update theme:', error);
+  // Effect 2: Content updates
+  $effect(() => {
+    // Only update if content changed externally
+    if (browser && editor && selectedFile && selectedFileContent !== lastContent) {
+      updateEditorContent(selectedFileContent);
     }
-  }
+  });
 
-  // CONTENT UPDATE
-  $: if (browser && editor && selectedFile && selectedFileContent !== lastContent) {
-    updateEditorContent();
-  }
+  function updateEditorContent(content: string) {
+    if (!editor) return;
+    
+    lastContent = content;
+    code = content;
 
-  function updateEditorContent() {
-    if (!browser || !editor || !selectedFile) return;
-    
-    if (selectedFileContent === lastContent) return;
-    
-    console.log('[DEBUG] Updating editor content');
-    
-    lastContent = selectedFileContent;
-    code = selectedFileContent;
-    
     if (saveTimeout) {
       clearTimeout(saveTimeout);
       saveTimeout = null;
     }
-    
+
     try {
-      let cleanContent = selectedFileContent || '';
-      cleanContent = cleanContent.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
-      cleanContent = cleanContent.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+      const cleanContent = cleanFileContent(content);
       
+      // Avoid resetting cursor if possible, but for now simple setValue
+      // To preserve cursor position would require getPosition/setPosition
+      const currentPos = editor.getPosition ? editor.getPosition() : null;
       editor.setValue(cleanContent);
-      
+      if (currentPos && editor.setPosition) {
+        editor.setPosition(currentPos);
+      }
+
       if (monaco && monaco.editor && editor.getModel) {
-        const language = getEditorLanguage(selectedFile, getFileMode);
+        const language = getEditorLanguage(selectedFile || '', getFileMode);
         monaco.editor.setModelLanguage(editor.getModel(), language);
+        // Force tokenization/colorize
+        monaco.editor.colorizeModelLine(editor.getModel());
       }
     } catch (error) {
       console.error('[ERROR] Error updating editor content:', error);
     }
   }
 
-  // AUTO-SAVE
-  $: if (browser && editor && selectedFile && code !== selectedFileContent && code !== lastContent) {
+  function scheduleAutoSave() {
+    if (saveTimeout) clearTimeout(saveTimeout);
+
+    if (code !== selectedFileContent && code !== lastContent) {
+      saveTimeout = setTimeout(() => {
+        manualSave();
+      }, 2000);
+    }
+  }
+
+  function manualSave() {
+    if (!browser || !selectedFile || code === undefined || code === null) return;
+
     if (saveTimeout) {
       clearTimeout(saveTimeout);
+      saveTimeout = null;
     }
 
-    saveTimeout = setTimeout(() => {
-      console.log(`[DEBUG] Auto-save triggered for: ${selectedFile}`);
-      
-      let cleanCode = String(code || '');
-      cleanCode = cleanCode.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-      cleanCode = cleanCode.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
-      
-      if (onContentSave) {
+    const cleanCode = cleanFileContent(code);
+    selectedFileContent = cleanCode; // Update bound prop
+    lastContent = cleanCode; // Update local tracker
+
+    if (onContentSave) {
         onContentSave(selectedFile, cleanCode);
-      }
-      dispatch('save', { path: selectedFile, content: cleanCode });
-    }, 2000);
+    }
+    
+    // Dispatch custom event for parents listening to 'save'
+    // Note: dispatch is deprecated in runes, prefer callbacks, but for compatibility:
+    const event = new CustomEvent('save', { detail: { path: selectedFile, content: cleanCode } });
+    editorContainer?.dispatchEvent(event);
+  }
+
+  function cleanFileContent(content: string): string {
+    let cleaned = String(content || '');
+    cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    cleaned = cleaned.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+    return cleaned;
   }
 
   function getEditorLanguage(path: string, customModeFn?: ((args: { selectedFile: string }) => string)): string {
@@ -365,7 +355,7 @@
       case 'html': return 'html';
       case 'json': return 'json';
       case 'md': return 'markdown';
-      case 'svelte': return 'html';
+      case 'svelte': return 'html'; // Monaco handles svelte better as html usually
       case 'py': return 'python';
       case 'java': return 'java';
       case 'cpp': case 'c': return 'cpp';
@@ -379,29 +369,17 @@
     const ext = filename.split('.').pop()?.toLowerCase();
     
     switch (ext) {
-      case 'js':
-        return { component: FileCode, class: 'text-yellow-600 dark:text-yellow-400' };
-      case 'ts':
-        return { component: FileCode, class: 'text-blue-600 dark:text-blue-400' };
-      case 'svelte':
-        return { component: Braces, class: 'text-orange-600 dark:text-orange-400' };
-      case 'css':
-        return { component: Palette, class: 'text-purple-600 dark:text-purple-400' };
-      case 'html':
-        return { component: Globe, class: 'text-red-600 dark:text-red-400' };
-      case 'json':
-        return { component: FileJson, class: 'text-green-600 dark:text-green-400' };
-      case 'md':
-        return { component: FileType, class: 'text-gray-600 dark:text-gray-400' };
-      case 'py':
-        return { component: FileCode, class: 'text-green-600 dark:text-green-400' };
-      case 'java':
-        return { component: Coffee, class: 'text-orange-600 dark:text-orange-400' };
-      case 'cpp':
-      case 'c':
-        return { component: Settings, class: 'text-gray-600 dark:text-gray-400' };
-      default:
-        return { component: FileText, class: 'text-gray-500 dark:text-gray-400' };
+      case 'js': return { component: FileCode, class: 'text-yellow-600 dark:text-yellow-400' };
+      case 'ts': return { component: FileCode, class: 'text-blue-600 dark:text-blue-400' };
+      case 'svelte': return { component: Braces, class: 'text-orange-600 dark:text-orange-400' };
+      case 'css': return { component: Palette, class: 'text-purple-600 dark:text-purple-400' };
+      case 'html': return { component: Globe, class: 'text-red-600 dark:text-red-400' };
+      case 'json': return { component: FileJson, class: 'text-green-600 dark:text-green-400' };
+      case 'md': return { component: FileType, class: 'text-gray-600 dark:text-gray-400' };
+      case 'py': return { component: FileCode, class: 'text-green-600 dark:text-green-400' };
+      case 'java': return { component: Coffee, class: 'text-orange-600 dark:text-orange-400' };
+      case 'cpp': case 'c': return { component: Settings, class: 'text-gray-600 dark:text-gray-400' };
+      default: return { component: FileText, class: 'text-gray-500 dark:text-gray-400' };
     }
   }
 </script>
@@ -415,11 +393,11 @@
         
         {#each pathParts as part, i}
           {#if i === pathParts.length - 1}
-            <!-- Current File - NO BACKGROUND -->
+            <!-- Current File -->
             {#each [getFileIcon(part)] as iconInfo}
-              {@const { component: IconComponent, class: iconClass } = iconInfo}
+              {@const IconComponent = iconInfo.component}
               <div class="flex items-center gap-2">
-                <svelte:component this={IconComponent} size="16" class={iconClass} />
+                <IconComponent size="16" class={iconInfo.class} />
                 <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">
                   {part}
                 </span>
@@ -472,7 +450,7 @@
     <!-- File Info Bar -->
     <div class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-stone-900 border-t border-gray-200 dark:border-stone-700">
       <div class="flex items-center gap-4 text-xs text-gray-600 dark:text-stone-400">
-        <span class="font-medium">Language: <span class="text-orange-600 dark:text-orange-400">{getEditorLanguage(selectedFile, getFileMode)}</span></span>
+        <span class="font-medium">Language: <span class="text-orange-600 dark:text-orange-400">{getEditorLanguage(selectedFile || '', getFileMode)}</span></span>
         <span>•</span>
         <span>Lines: <span class="font-medium">{code.split('\n').length}</span></span>
         <span>•</span>
